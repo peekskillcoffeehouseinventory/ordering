@@ -804,17 +804,23 @@ function renderOrderView(){
       const rname=R?(R.orderName||R.name):'';
       const louom=L?L.orderUom:'';
       const rouom=R?R.orderUom:'';
+      const lphoto=L?(L.orderPhoto||L.photo||photoCache['order_'+L.id]||photoCache[L.id]||null):null;
+      const rphoto=R?(R.orderPhoto||R.photo||photoCache['order_'+R.id]||photoCache[R.id]||null):null;
+      const lthumb=lphoto?`<img src="${lphoto}" style="width:28px;height:28px;object-fit:cover;border-radius:5px;border:1px solid #f0f0eb">`:'<div style="width:28px;height:28px;border-radius:5px;background:#f5f5f0;border:1px solid #f0f0eb"></div>';
+      const rthumb=rphoto?`<img src="${rphoto}" style="width:28px;height:28px;object-fit:cover;border-radius:5px;border:1px solid #f0f0eb">`:'<div style="width:28px;height:28px;border-radius:5px;background:#f5f5f0;border:1px solid #f0f0eb"></div>';
       // Section break — bold separator row
       const lbreak=L&&L.sectionBreak&&i>0;
       const rbreak=R&&R.sectionBreak&&i>0;
       if(lbreak||rbreak){
-        rows+=`<tr><td colspan="7" style="padding:0;border-bottom:2px solid #1a1a1a"></td></tr>`;
+        rows+=`<tr><td colspan="9" style="padding:0;border-bottom:2px solid #1a1a1a"></td></tr>`;
       }
       rows+=`<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0f0eb">${L?lthumb:''}</td>
         <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;font-weight:500">${lname}</td>
         <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;text-align:center;font-weight:700;color:#dc2626">${L?(lqty||''):''}</td>
         <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;color:#888">${louom}</td>
         <td style="padding:5px 8px;border-right:none;border-bottom:1px solid #f0f0eb;width:16px"></td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0f0eb">${R?rthumb:''}</td>
         <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;font-weight:500">${rname}</td>
         <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;text-align:center;font-weight:700;color:#dc2626">${R?(rqty||''):''}</td>
         <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;color:#888">${rouom}</td>
@@ -824,10 +830,12 @@ function renderOrderView(){
       <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-radius:8px;overflow:hidden">
         <thead>
           <tr style="background:#f5f5f0">
+            <th style="padding:6px 8px;width:32px"></th>
             <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;text-align:left;font-weight:700">Item</th>
             <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;text-align:center;font-weight:700">Qty</th>
             <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;text-align:left;font-weight:700">UoM</th>
             <th style="padding:0;width:16px;background:#e8e8e3"></th>
+            <th style="padding:6px 8px;width:32px"></th>
             <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;text-align:left;font-weight:700">Item</th>
             <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;text-align:center;font-weight:700">Qty</th>
             <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;text-align:left;font-weight:700">UoM</th>
@@ -844,12 +852,15 @@ function renderOrderView(){
       html+=`<div class="order-loc-grp" style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none;display:flex;justify-content:space-between"><span>${loc}</span><span style="font-size:12px;color:#aaa">${li.length} item${li.length>1?'s':''}</span></div>
         <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:1fr 110px 70px;gap:8px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#fff"><span>Item</span><span>Order UoM</span><span style="text-align:center">Qty</span></div>`;
+          <div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#fff"><span></span><span>Item</span><span>Order UoM</span><span style="text-align:center">Qty</span></div>`;
       li.forEach(item=>{
         const qty=calcOrderQty(item);
         const dispName=item.orderName||item.name;
+        const dispPhoto=item.orderPhoto||item.photo||photoCache['order_'+item.id]||photoCache[item.id]||null;
+        const thumb=dispPhoto?`<img src="${dispPhoto}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #f0f0eb;flex-shrink:0">`:'<div style="width:32px;height:32px;border-radius:6px;background:#f5f5f0;border:1px solid #f0f0eb;flex-shrink:0"></div>';
         const sbreak=item.sectionBreak?'<div style="height:2px;background:#1a1a1a;margin:4px 0"></div>':'';
-        html+=sbreak+`<div style="display:grid;grid-template-columns:1fr 110px 70px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+        html+=sbreak+`<div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+          ${thumb}
           <span style="font-weight:500">${dispName}</span>
           <span style="color:#aaa">${item.orderUom}</span>
           <span style="text-align:center;font-weight:700">${qty}</span></div>`;
