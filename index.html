@@ -343,10 +343,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div><h2>End of Month Inventory</h2><div class="view-meta" id="inv-meta"></div></div>
       <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
     </div>
-    <div class="name-bar no-print">
-      <label>Your name:</label>
-      <input id="inv-staff-name" type="text" placeholder="Enter your name">
-    </div>
+<input type="hidden" id="inv-staff-name">
     <div id="inv-body"></div>
     <div class="actions no-print">
       <button class="btn btn-primary" onclick="saveInventoryCounts()">💾 Save counts</button>
@@ -1390,10 +1387,25 @@ function renderLocChips(mode){
 
 // END OF MONTH INVENTORY MODE
 let invCounts = {};
+let invSavedColors = {}; // {itemId_loc: color} from saved inventory counts
 
 async function openInventoryMode(){
   showView('inventory');
   await reloadAll();
+  // Restore saved inventory counts from history
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  if(invEntry&&invEntry.counts){
+    Object.entries(invEntry.counts).forEach(([k,data])=>{
+      if(data&&data.value!==undefined){
+        invCounts[k] = data.value;
+        if(data.color) invSavedColors[k] = data.color;
+      } else if(data!==null&&data!==undefined&&typeof data !== 'object'){
+        invCounts[k] = data;
+      }
+    });
+  }
   renderInventoryMode();
 }
 
@@ -1418,9 +1430,12 @@ function renderInventoryMode(){
       const safeId = String(item.id)+'_'+escapedLoc;
       const k = String(item.id)+'_'+escapedLoc;
       const cv = invCounts[k];
-      // Color border from user profile for unsaved counts
+      const savedColor = invSavedColors[k]||'';
       const myColor = userProfile?userProfile.color:'';
-      const borderStyle = cv!==undefined&&cv!==null&&myColor?'border:2px solid '+myColor+';':'';
+      // Show saved color if exists, otherwise user color if actively counted, otherwise no border
+      const activeColor = cv!==undefined&&cv!==null ? myColor : '';
+      const borderColor = savedColor||activeColor;
+      const borderStyle = borderColor?'border:2px solid '+borderColor+';':'';
       html+='<div class="item-row" style="grid-template-columns:44px 1fr 76px">';
       html+=thumbHTML(item.photo,36,16);
       html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||item.orderUom||'')+'</div></div>';
@@ -1450,22 +1465,47 @@ function updateInvCount(el){
 }
 
 async function saveInventoryCounts(){
-  const name = document.getElementById('inv-staff-name').value.trim()||'Team Lead';
+  const name = (userProfile&&userProfile.name)||document.getElementById('inv-staff-name').value.trim()||'Team Lead';
+  const color = (userProfile&&userProfile.color)||'#1a1a1a';
   const now = new Date();
-  const entry = {
-    id:'inv'+Date.now(), date:now.toISOString(),
-    vendor:'INVENTORY', teamLead:name, day:'End of Month',
-    counts: JSON.parse(JSON.stringify(invCounts))
-  };
+
+  // Build count data with color metadata, skip nulls
+  const countData = {};
+  Object.entries(invCounts).forEach(([k,val])=>{
+    if(val!==null&&val!==undefined){
+      countData[k] = {value:val, savedBy:name, color:color};
+      invSavedColors[k] = color;
+    }
+  });
+
+  // Check for existing inventory entry this month
+  const thisMonth = now.toISOString().slice(0,7); // YYYY-MM
+  const existingIdx = history.findIndex(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  let entry;
+  if(existingIdx>=0){
+    entry = history[existingIdx];
+    entry.date = now.toISOString();
+    entry.teamLead = name;
+    Object.assign(entry.counts, countData);
+    history.splice(existingIdx,1);
+  } else {
+    entry = {
+      id:'inv'+Date.now(), date:now.toISOString(),
+      vendor:'INVENTORY', teamLead:name, day:'End of Month',
+      counts:countData
+    };
+  }
   history.unshift(entry);
-  await sheetWrite('addHistory',{entry});
+  await sheetWrite('saveCount',{entry});
   document.getElementById('inv-meta').textContent = now.toLocaleDateString([],{month:'long',year:'numeric'})+' - Saved by '+name+' at '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  showToast('Inventory saved!');
+  showToast('✅ Inventory saved!');
+  renderInventoryMode();
 }
 
 function clearInventoryCounts(){
   if(!confirm('Clear all inventory counts?')) return;
   invCounts = {};
+  invSavedColors = {};
   renderInventoryMode();
 }
 
