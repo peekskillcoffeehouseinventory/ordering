@@ -865,21 +865,21 @@ async function confirmSave(){
   const now=new Date();
   const todayKey=now.toDateString()+'_'+activeVendor;
 
-  // Only save items actually entered THIS session — not restored from history
+  // Build count data — only claim items in sessionCounts for this vendor
   const mySession = sessionCounts[activeVendor]||{};
-  console.log('Session items to save:', Object.keys(mySession).length, JSON.stringify(Object.keys(mySession)));
   const countData={};
+  // Get existing today entry to compare against
+  const existingTodayEntry = history.find(h=>h.vendor===activeVendor&&new Date(h.date).toDateString()===now.toDateString());
   vendorItems(activeVendor).forEach(i=>{
-    const sessionLocs = mySession[i.id]||{};
-    if(!Object.keys(sessionLocs).length) return; // skip items not entered this session
+    const sessionLocs = mySession[i.id];
+    if(!sessionLocs || !Object.keys(sessionLocs).length) return;
     const cleanCounts={};
     Object.entries(sessionLocs).forEach(([loc])=>{
       const val = i.counts[loc];
       if(val!==null&&val!==undefined) cleanCounts[loc]=val;
     });
     if(Object.keys(cleanCounts).length){
-      const existingEntry = history.find(h=>h.vendor===activeVendor&&new Date(h.date).toDateString()===now.toDateString());
-      const existingContribs=(existingEntry&&existingEntry.counts&&existingEntry.counts[i.id]&&existingEntry.counts[i.id].contributors)||{};
+      const existingContribs=(existingTodayEntry&&existingTodayEntry.counts&&existingTodayEntry.counts[i.id]&&existingTodayEntry.counts[i.id].contributors)||{};
       countData[i.id]={counts:cleanCounts, savedBy:name, color:color, contributors:Object.assign({},existingContribs,{[name]:color})};
     }
   });
@@ -1506,7 +1506,7 @@ function updateInvCount(el){
   const val = el.value;
   const k = id+'_'+loc;
   invCounts[k] = val===''?null:parseFloat(val);
-  // Track as entered this session
+  // Track as entered this session using simple flat key
   if(!sessionCounts['__INVENTORY__']) sessionCounts['__INVENTORY__']={};
   sessionCounts['__INVENTORY__'][k]=true;
   // No par comparison in inventory mode — just show user color immediately
