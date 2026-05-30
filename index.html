@@ -783,17 +783,20 @@ function renderCountView(){
       const item=items.find(i=>String(i.id)===String(id));
       if(!item) return;
       const isNewFormat = data.counts!==undefined&&data.savedBy!==undefined;
-      const savedBy = isNewFormat ? data.savedBy : null;
-      const color = isNewFormat ? data.color : null;
       const countsData = isNewFormat ? data.counts : data;
-      const isMine = myName && savedBy === myName;
-      // Always restore the count values if item has no active memory counts
+      const contributors = (isNewFormat&&data.contributors)||{};
+      // Always restore count values if item has no active memory counts
       if(!item.counts||!Object.keys(item.counts).length){
         if(countsData) item.counts=JSON.parse(JSON.stringify(countsData||{}));
       }
-      // Only show saved color if it's NOT from this user
-      // (this user's color comes from their active input, not from history)
-      if(color && !isMine) savedColors[id]=color;
+      // Determine color: use THIS user's own color from contributors map if they contributed
+      // otherwise show the savedBy color (someone else counted this)
+      if(myName && contributors[myName]){
+        // I counted this — my color will be applied via active input, don't set savedColor
+      } else if(isNewFormat && data.color){
+        // Someone else counted this — show their color
+        savedColors[id]=data.color;
+      }
     });
   }
   let html='';
@@ -857,30 +860,36 @@ async function confirmSave(){
   const now=new Date();
   const todayKey=now.toDateString()+'_'+activeVendor;
 
-  // Build counts with name+color metadata per item
+  // Build counts with per-person color metadata
   const countData={};
   vendorItems(activeVendor).forEach(i=>{
     if(i.counts && Object.keys(i.counts).length){
-      // Only save locations that have actual non-null values
       const cleanCounts={};
       Object.entries(i.counts).forEach(([loc,val])=>{
         if(val!==null&&val!==undefined) cleanCounts[loc]=val;
       });
       if(Object.keys(cleanCounts).length){
-        countData[i.id]={counts:cleanCounts, savedBy:name, color:color};
+        countData[i.id]={counts:cleanCounts, savedBy:name, color:color, contributors:{[name]:color}};
       }
     }
   });
 
-  // Additive: merge with existing today entry if exists
+  // Additive: merge with existing today entry, preserving each person's color
   const existingIdx = history.findIndex(h=>h.vendor===activeVendor && new Date(h.date).toDateString()===now.toDateString() && h.day===activeDay);
   let entry;
   if(existingIdx>=0){
-    // Merge — only update items this person counted
     entry = history[existingIdx];
     entry.date = now.toISOString();
     entry.teamLead = name;
-    Object.assign(entry.counts, countData);
+    // Merge additively — preserve existing contributors' colors
+    Object.entries(countData).forEach(([id,newData])=>{
+      if(entry.counts[id]){
+        // Preserve existing contributors from the stored entry
+        const existingContribs = entry.counts[id].contributors||{};
+        newData.contributors = Object.assign({}, existingContribs, {[name]:color});
+      }
+      entry.counts[id] = newData;
+    });
     history.splice(existingIdx,1);
   } else {
     entry = {
