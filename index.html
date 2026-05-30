@@ -464,7 +464,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycby4zHt0uWLJFbBIV8SawmSHVDQpHrWRoDTzBT7y8tlwmjkrsKhTSvd6WqBwlNQv3Dbvhw/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbwW0SPy6ksVAlYMPIlOdyhQdwLuM_erQK_nuu6wZOMlsLIJOPPeeAQDyu76f_GKeHZ20A/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -686,6 +686,7 @@ function showView(name){
   if(name==='mgr') renderMgr();
 }
 function goBack(){
+  stopCountSync();
   const map={order:'count','hist-detail':'history',count:'dash',history:'dash',mgr:'dash',inventory:'dash'};
   const dest=map[prevView]||'dash';
   showView(dest);if(dest==='dash') renderDash(activeDay);
@@ -731,13 +732,30 @@ function renderDash(day){
 }
 
 // ─── COUNT VIEW ───────────────────────────────────────────────────────────
+// Auto-sync counts every 30 seconds while counting
+let syncInterval = null;
+
+function startCountSync(){
+  stopCountSync();
+  syncInterval = setInterval(async()=>{
+    if(activeVendor){
+      const countData = vendorItems(activeVendor).reduce((acc,i)=>{acc[i.id]=i.counts;return acc;},{});
+      await sheetWrite('syncCounts',{vendor:activeVendor, counts:countData});
+    }
+  }, 30000);
+}
+
+function stopCountSync(){
+  if(syncInterval){ clearInterval(syncInterval); syncInterval=null; }
+}
+
 async function openVendor(vname){
   activeVendor=vname;document.getElementById('cv-title').textContent=vname;
   document.getElementById('cv-meta').textContent=activeDay+' count';
   showView('count');
-  // Refresh data silently before rendering
   await reloadAll();
   renderCountView();
+  startCountSync();
 }
 function renderCountView(){
   const vi=vendorItems(activeVendor);
@@ -1308,9 +1326,10 @@ function renderInventoryMode(){
   }
   let html='';
   allLocs.forEach(loc=>{
+    const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
     const locItems = items.filter(i=>i.locations.includes(loc)).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
     if(!locItems.length) return;
-    html+='<div class="loc-group no-print">';
+    html+='<div class="loc-group">';
     html+='<div class="loc-hdr">'+loc+'</div>';
     html+='<div class="col-hdr"><span></span><span>Item</span><span style="text-align:center">Count</span><span style="text-align:center">Par</span><span style="text-align:center">On hand</span></div>';
     locItems.forEach(item=>{
@@ -1321,9 +1340,8 @@ function renderInventoryMode(){
       html+='<div class="item-row">';
       html+=thumbHTML(item.photo,36,16);
       html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||item.orderUom||'')+'</div></div>';
-      const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
       html+='<input class="count-inp'+(low?' low':'')+'" type="number" min="0" step="0.01" id="inv-'+safeId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="-" data-itemid="'+String(item.id)+'" data-loc="'+escapedLoc+'" oninput="updateInvCount(this)">';
-      html+='<div class="par-val">'+(item.par||'&mdash;')+'</div>';
+      html+='<div class="par-val">'+(item.par||'-')+'</div>';
       html+='<div class="order-val '+(cv===undefined||cv===null?'empty':cv>=item.par?'ok':'needs')+'" id="inv-ov-'+safeId+'">'+(cv===undefined||cv===null?'-':cv>=item.par?'v':cv)+'</div>';
       html+='</div>';
     });
