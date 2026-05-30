@@ -160,6 +160,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .print-two-col{border:1px solid #ccc}
   .print-row{font-size:11px;padding:5px 8px}
   .order-loc-grp{page-break-inside:avoid}
+  /* Inventory two-column print layout */
+  #inv-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #inv-body .loc-group{break-inside:avoid}
+  #inv-body .item-row{grid-template-columns:28px 1fr 50px!important}
+  #inv-body .item-row input{width:100%;border:1px solid #ccc!important;background:white!important;font-size:10px;padding:2px 4px}
+  #inv-body .loc-hdr{font-size:10px;padding:5px 8px}
+  #inv-body .col-hdr{font-size:9px;padding:3px 8px}
+  #inv-body .item-name{font-size:10px}
+  #inv-body .item-uom{font-size:9px}
 }
 .print-hdr{display:none}
 </style>
@@ -1526,12 +1535,13 @@ async function saveInventoryCounts(){
 
   // Only save counts entered THIS session
   const myInvSession = sessionCounts['__INVENTORY__']||{};
+  console.log('Inv session keys:', Object.keys(myInvSession).length, JSON.stringify(Object.keys(myInvSession).slice(0,3)));
   const countData = {};
-  Object.entries(invCounts).forEach(([k,val])=>{
-    if(!myInvSession[k]) return; // skip if not entered this session
+  const existingInvEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===now.toISOString().slice(0,7));
+  Object.entries(myInvSession).forEach(k=>{
+    const val = invCounts[k];
     if(val!==null&&val!==undefined){
-      const existingEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===now.toISOString().slice(0,7));
-      const existingContribs=(existingEntry&&existingEntry.counts&&existingEntry.counts[k]&&existingEntry.counts[k].contributors)||{};
+      const existingContribs=(existingInvEntry&&existingInvEntry.counts&&existingInvEntry.counts[k]&&existingInvEntry.counts[k].contributors)||{};
       countData[k] = {value:val, savedBy:name, color:color, contributors:Object.assign({},existingContribs,{[name]:color})};
       invSavedColors[k] = color;
     }
