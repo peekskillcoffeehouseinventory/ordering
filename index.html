@@ -173,6 +173,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Profile Setup Modal -->
+<div id="profile-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%">
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:6px">Welcome! 👋</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:20px">Set up your profile so your counts are tracked to you.</p>
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;display:block;margin-bottom:6px">Your name</label>
+      <input id="profile-name-inp" type="text" placeholder="e.g. Shaun" style="width:100%;padding:10px;font-size:15px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;display:block;margin-bottom:8px">Pick your color</label>
+      <div id="color-picker" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="saveProfile()">Save profile</button>
+  </div>
+</div>
+
 <!-- Add to Home Screen Popup -->
 <div id="a2hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center">
@@ -270,7 +287,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="app">
   <div class="topbar no-print">
-    <h1>📦 Ordering</h1>
+    <div>
+      <div style="font-size:17px;font-weight:700" id="greeting-text">📦 Ordering</div>
+      <div style="font-size:11px;color:#aaa;margin-top:1px" id="greeting-sub"></div>
+    </div>
     <div class="topbar-right">
       <span><span class="sync-dot" id="sync-dot"></span><span class="sync-lbl" id="sync-lbl">Loading...</span></span>
       <span class="today-lbl" id="today-lbl"></span>
@@ -464,7 +484,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbwW0SPy6ksVAlYMPIlOdyhQdwLuM_erQK_nuu6wZOMlsLIJOPPeeAQDyu76f_GKeHZ20A/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbyU9X0-n88LwlezX4Yk8-loI0TWNwNB2qYTDMmtV-kcP7HQ8WcOwgrvG-xAUb6PwwPG7w/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -753,37 +773,55 @@ async function openVendor(vname){
   activeVendor=vname;document.getElementById('cv-title').textContent=vname;
   document.getElementById('cv-meta').textContent=activeDay+' count';
   showView('count');
+  // Pre-fill name from profile
+  const nameInp=document.getElementById('staff-name');
+  if(nameInp && userProfile && userProfile.name && !nameInp.value) nameInp.value=userProfile.name;
   await reloadAll();
   renderCountView();
   startCountSync();
 }
 function renderCountView(){
   const vi=vendorItems(activeVendor);
-  if(!vi.length){document.getElementById('cv-body').innerHTML=`<div class="empty-msg">No items for ${activeVendor}. Add items in manager mode.</div>`;return;}
+  if(!vi.length){document.getElementById('cv-body').innerHTML='<div class="empty-msg">No items for '+activeVendor+'. Add items in manager mode.</div>';return;}
   const locs=[...new Set(vi.flatMap(i=>i.locations))].sort();
-  if(!locs.length){document.getElementById('cv-body').innerHTML=`<div class="empty-msg">Items exist but have no locations assigned yet. Edit items in manager mode to assign locations.</div>`;return;}
+  if(!locs.length){document.getElementById('cv-body').innerHTML='<div class="empty-msg">Items exist but no locations assigned. Edit in manager mode.</div>';return;}
+  // Get saved count colors for today
+  const now=new Date();
+  const todayEntry=history.find(h=>h.vendor===activeVendor&&new Date(h.date).toDateString()===now.toDateString());
+  const savedColors={};
+  if(todayEntry&&todayEntry.counts){
+    Object.entries(todayEntry.counts).forEach(([id,data])=>{
+      if(data&&data.color) savedColors[id]=data.color;
+    });
+  }
   let html='';
   locs.forEach(loc=>{
     const locItems=vi.filter(i=>i.locations.includes(loc));
-    html+=`<div class="loc-group"><div class="loc-hdr">${loc}</div>
-      <div class="col-hdr"><span></span><span>Item</span><span style="text-align:center">Count</span><span style="text-align:center">Par</span><span style="text-align:center">To order</span></div>`;
+    html+='<div class="loc-group"><div class="loc-hdr">'+loc+'</div>';
+    html+='<div class="col-hdr"><span></span><span>Item</span><span style="text-align:center">Count</span><span style="text-align:center">Par</span><span style="text-align:center">To order</span></div>';
     locItems.forEach(item=>{
-      const cv=item.counts[loc];const low=cv!==undefined&&cv!==null&&cv<item.par;
+      const safeLocId=loc.replace(/[^a-z0-9]/gi,'_');
+      const cv=item.counts[loc];
+      const low=cv!==undefined&&cv!==null&&cv<item.par;
       const tc=totalCount(item);const ord=calcOrderQty(item);
-      html+=`<div class="item-row">
-        ${thumbHTML(item.photo,36,16)}
-        <div><div class="item-name">${item.name}</div><div class="item-uom">${item.countUom||'—'}${item.locations.length>1?` <span style="color:#a78bfa;font-size:10px">+${item.locations.length-1} loc</span>`:''}</div></div>
-        <input class="count-inp${low?' low':''}" type="number" min="0" step="0.01"
-          id="ci-${item.id}-${loc.replace(/\s/g,'_')}"
-          value="${cv!==undefined&&cv!==null?cv:''}" placeholder="—"
-          oninput="updateCount(${item.id},'${loc.replace(/'/g,"\\'")}',this.value)">
-        <div class="par-val">${item.par||'—'}</div>
-        <div class="order-val ${tc===null?'empty':ord>0?'needs':'ok'}" id="ov-${item.id}">${tc===null?'—':ord>0?ord+' '+(item.orderMethod==='par'?item.countUom:item.orderUom):'✓'}</div>
-      </div>`;
+      const savedColor=savedColors[String(item.id)];
+      const borderStyle=(!low&&savedColor)?'border:2px solid '+savedColor+';':'';
+      html+='<div class="item-row">';
+      html+=thumbHTML(item.photo,36,16);
+      html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||'—')+(item.locations.length>1?'<span style="color:#a78bfa;font-size:10px"> +'+( item.locations.length-1)+' loc</span>':'')+'</div></div>';
+      html+='<input class="count-inp'+(low?' low':'')+'" type="number" min="0" step="0.01" style="'+borderStyle+'" id="ci-'+item.id+'-'+safeLocId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="—" data-itemid="'+item.id+'" data-loc="'+loc.replace(/[^a-zA-Z0-9]/g,'_')+'" data-rawloc="'+loc.replace(/"/g,'&quot;')+'" oninput="updateCountEl(this)">';
+      html+='<div class="par-val">'+(item.par||'—')+'</div>';
+      html+='<div class="order-val '+(tc===null?'empty':ord>0?'needs':'ok')+'" id="ov-'+item.id+'">'+(tc===null?'—':ord>0?ord+' '+(item.orderMethod==='par'?item.countUom:item.orderUom):'✓')+'</div>';
+      html+='</div>';
     });
-    html+=`</div>`;
+    html+='</div>';
   });
   document.getElementById('cv-body').innerHTML=html;
+}
+function updateCountEl(el){
+  const id=parseInt(el.dataset.itemid);
+  const loc=el.dataset.rawloc||el.dataset.loc.replace(/_/g,' ');
+  updateCount(id,loc,el.value);
 }
 function updateCount(id,loc,val){
   const item=items.find(i=>i.id===id);if(!item) return;
@@ -802,18 +840,43 @@ function saveCounts(){
 }
 function closeSaveModal(){document.getElementById('save-modal').style.display='none';}
 async function confirmSave(){
-  const name=document.getElementById('staff-name').value.trim()||'Team Lead';
+  const name=document.getElementById('staff-name').value.trim()||(userProfile?userProfile.name:'')||'Team Lead';
+  const color=userProfile?userProfile.color:'#1a1a1a';
   closeSaveModal();
   const now=new Date();
-  const entry={
-    id:'h'+Date.now(),date:now.toISOString(),vendor:activeVendor,
-    teamLead:name,day:activeDay,
-    counts:JSON.parse(JSON.stringify(vendorItems(activeVendor).reduce((acc,i)=>{acc[i.id]=i.counts;return acc;},{})))
-  };
+  const todayKey=now.toDateString()+'_'+activeVendor;
+
+  // Build counts with name+color metadata per item
+  const countData={};
+  vendorItems(activeVendor).forEach(i=>{
+    if(i.counts && Object.keys(i.counts).length){
+      countData[i.id]={counts:i.counts, savedBy:name, color:color};
+    }
+  });
+
+  // Additive: merge with existing today entry if exists
+  const existingIdx = history.findIndex(h=>h.vendor===activeVendor && new Date(h.date).toDateString()===now.toDateString() && h.day===activeDay);
+  let entry;
+  if(existingIdx>=0){
+    // Merge — only update items this person counted
+    entry = history[existingIdx];
+    entry.date = now.toISOString();
+    entry.teamLead = name;
+    Object.assign(entry.counts, countData);
+    history.splice(existingIdx,1);
+  } else {
+    entry = {
+      id:'h'+Date.now(), date:now.toISOString(),
+      vendor:activeVendor, teamLead:name, day:activeDay,
+      counts:countData
+    };
+  }
   history.unshift(entry);
   const cutoff=Date.now()-90*24*60*60*1000;
   history=history.filter(h=>new Date(h.date).getTime()>cutoff);
-  const ok=await sheetWrite('addHistory',{entry});
+  localStorage.setItem('last_count_date', now.toDateString());
+
+  const ok=await sheetWrite('saveCount',{entry});
   if(ok){
     document.getElementById('cv-meta').textContent=`${activeDay} · Saved by ${name} at ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
     showToast('✅ Count saved!');
@@ -1108,7 +1171,9 @@ async function saveEditItem(){
 }
 
 async function reloadAll(){
-  // Silently refresh all data from Sheet
+  // Silently refresh all data from Sheet — preserve active counts in memory
+  const activeCounts={};
+  items.forEach(i=>{ if(i.counts&&Object.keys(i.counts).length) activeCounts[i.id]=i.counts; });
   try{
     const [vRows,lRows,iRows,hRows] = await withTimeout(
       Promise.all([sheetRead('Vendors'),sheetRead('Locations'),sheetRead('Items'),sheetRead('History')]),
@@ -1132,7 +1197,12 @@ async function reloadAll(){
     const seenIds=new Map();
     rawItems.forEach(i=>seenIds.set(String(i.id),i));
     items=[...seenIds.values()];
-    items.forEach(i=>{if(!i.photo&&photoCache[i.id])i.photo=photoCache[i.id];if(!i.orderPhoto&&photoCache['order_'+i.id])i.orderPhoto=photoCache['order_'+i.id];});
+    items.forEach(i=>{
+      if(!i.photo&&photoCache[i.id])i.photo=photoCache[i.id];
+      if(!i.orderPhoto&&photoCache['order_'+i.id])i.orderPhoto=photoCache['order_'+i.id];
+      // Restore any active counts that were in progress before reload
+      if(activeCounts[i.id]) i.counts=activeCounts[i.id];
+    });
     history=hRows.map(r=>({id:r.id,date:r.date,vendor:r.vendor,teamLead:r.teamLead,day:r.day,counts:tryParse(r.counts)}));
     setSyncStatus('ok','Connected');
   }catch(e){
@@ -1142,7 +1212,9 @@ async function reloadAll(){
 }
 
 async function reloadItems(){
-  // Wait for Apps Script to finish writing before reading back
+  // Preserve active counts before reload
+  const activeCounts={};
+  items.forEach(i=>{ if(i.counts&&Object.keys(i.counts).length) activeCounts[i.id]=i.counts; });
   await new Promise(r=>setTimeout(r,1500));
   try{
     const iRows=await sheetRead('Items');
@@ -1166,8 +1238,10 @@ async function reloadItems(){
     const seen=new Map();
     loaded.forEach(i=>seen.set(String(i.id),i));
     items=[...seen.values()];
-    // Restore from cache only if sheet has no photo
-    items.forEach(i=>{ if(!i.photo && photoCache[i.id]) i.photo=photoCache[i.id]; });
+    items.forEach(i=>{
+      if(!i.photo && photoCache[i.id]) i.photo=photoCache[i.id];
+      if(activeCounts[i.id]) i.counts=activeCounts[i.id];
+    });
   }catch(e){console.warn('reloadItems failed:',e.message);}
 }
 
@@ -1331,18 +1405,18 @@ function renderInventoryMode(){
     if(!locItems.length) return;
     html+='<div class="loc-group">';
     html+='<div class="loc-hdr">'+loc+'</div>';
-    html+='<div class="col-hdr"><span></span><span>Item</span><span style="text-align:center">Count</span><span style="text-align:center">Par</span><span style="text-align:center">On hand</span></div>';
+    html+='<div class="col-hdr" style="grid-template-columns:44px 1fr 76px"><span></span><span>Item</span><span style="text-align:center">Count</span></div>';
     locItems.forEach(item=>{
       const safeId = String(item.id)+'_'+escapedLoc;
       const k = String(item.id)+'_'+escapedLoc;
       const cv = invCounts[k];
-      const low = cv!==undefined && cv!==null && cv<item.par;
-      html+='<div class="item-row">';
+      // Color border from user profile for unsaved counts
+      const myColor = userProfile?userProfile.color:'';
+      const borderStyle = cv!==undefined&&cv!==null&&myColor?'border:2px solid '+myColor+';':'';
+      html+='<div class="item-row" style="grid-template-columns:44px 1fr 76px">';
       html+=thumbHTML(item.photo,36,16);
       html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||item.orderUom||'')+'</div></div>';
-      html+='<input class="count-inp'+(low?' low':'')+'" type="number" min="0" step="0.01" id="inv-'+safeId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="-" data-itemid="'+String(item.id)+'" data-loc="'+escapedLoc+'" oninput="updateInvCount(this)">';
-      html+='<div class="par-val">'+(item.par||'-')+'</div>';
-      html+='<div class="order-val '+(cv===undefined||cv===null?'empty':cv>=item.par?'ok':'needs')+'" id="inv-ov-'+safeId+'">'+(cv===undefined||cv===null?'-':cv>=item.par?'v':cv)+'</div>';
+      html+='<input class="count-inp" type="number" min="0" step="0.01" style="'+borderStyle+'" id="inv-'+safeId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="-" data-itemid="'+String(item.id)+'" data-loc="'+escapedLoc+'" oninput="updateInvCount(this)">';
       html+='</div>';
     });
     html+='</div>';
@@ -1363,7 +1437,7 @@ function updateInvCount(el){
   if(ov && item){
     const cv = invCounts[k];
     ov.className='order-val '+(cv===null||cv===undefined?'empty':cv>=item.par?'ok':'needs');
-    ov.textContent = cv===null||cv===undefined?'-':cv>=item.par?'v':cv;
+    ov.textContent = cv===null||cv===undefined?'—':cv>=item.par?'✓':cv;
   }
 }
 
@@ -1385,6 +1459,90 @@ function clearInventoryCounts(){
   if(!confirm('Clear all inventory counts?')) return;
   invCounts = {};
   renderInventoryMode();
+}
+
+// USER PROFILE
+const COLORS = [
+  {name:'Blue',    value:'#3B82F6'},
+  {name:'Green',   value:'#16A34A'},
+  {name:'Orange',  value:'#EA580C'},
+  {name:'Red',     value:'#DC2626'},
+  {name:'Purple',  value:'#9333EA'},
+  {name:'Yellow',  value:'#CA8A04'},
+  {name:'Pink',    value:'#DB2777'},
+  {name:'Brown',   value:'#92400E'},
+  {name:'Teal',    value:'#0891B2'},
+  {name:'Slate',   value:'#475569'},
+];
+
+let userProfile = JSON.parse(localStorage.getItem('user_profile')||'null');
+let selectedColor = COLORS[0].value;
+
+function initProfile(){
+  if(!userProfile){
+    showProfileModal();
+  } else {
+    updateGreeting();
+  }
+}
+
+function showProfileModal(edit=false){
+  const modal = document.getElementById('profile-modal');
+  if(userProfile && edit){
+    document.getElementById('profile-name-inp').value = userProfile.name||'';
+    selectedColor = userProfile.color||COLORS[0].value;
+  } else {
+    selectedColor = COLORS[0].value;
+  }
+  renderColorPicker();
+  modal.style.display='flex';
+  setTimeout(()=>document.getElementById('profile-name-inp').focus(),100);
+}
+
+function renderColorPicker(){
+  document.getElementById('color-picker').innerHTML = COLORS.map(c=>`
+    <div onclick="selectColor('${c.value}')" style="width:36px;height:36px;border-radius:50%;background:${c.value};cursor:pointer;border:3px solid ${selectedColor===c.value?'#1a1a1a':'transparent'};transition:all .15s" title="${c.name}"></div>
+  `).join('');
+}
+
+function selectColor(val){
+  selectedColor = val;
+  renderColorPicker();
+}
+
+function saveProfile(){
+  const name = document.getElementById('profile-name-inp').value.trim();
+  if(!name){ alert('Please enter your name.'); return; }
+  userProfile = {name, color:selectedColor};
+  localStorage.setItem('user_profile', JSON.stringify(userProfile));
+  document.getElementById('profile-modal').style.display='none';
+  updateGreeting();
+}
+
+function updateGreeting(){
+  const greet = document.getElementById('greeting-text');
+  const sub = document.getElementById('greeting-sub');
+  if(userProfile && userProfile.name){
+    greet.innerHTML = `Hi <span style="color:${userProfile.color}">${userProfile.name}</span>! 👋`;
+    sub.textContent = 'Tap to change profile';
+    sub.style.cursor='pointer';
+    sub.onclick = ()=>showProfileModal(true);
+  } else {
+    greet.innerHTML = '📦 Ordering';
+    sub.textContent = '';
+  }
+}
+
+// Midnight reset check
+function checkMidnightReset(){
+  const lastDate = localStorage.getItem('last_count_date');
+  const today = new Date().toDateString();
+  if(lastDate && lastDate !== today){
+    // New day — clear all active counts
+    items.forEach(i=>i.counts={});
+    showToast('New day — counts have been reset');
+  }
+  localStorage.setItem('last_count_date', today);
 }
 
 // ADD TO HOME SCREEN POPUP
@@ -1426,6 +1584,8 @@ document.addEventListener('click',e=>{
 document.getElementById('today-lbl').textContent=WEEKDAYS[(new Date().getDay()+6)%7]+', '+new Date().toLocaleDateString([],{month:'short',day:'numeric'});
 loadAllData();
 checkA2HS();
+initProfile();
+checkMidnightReset();
 </script>
 </body>
 </html>
