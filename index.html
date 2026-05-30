@@ -844,29 +844,25 @@ function renderOrderView(){
         <tbody>${rows}</tbody>
       </table>`;
   } else {
-    // Single column for other vendors
-    let html='';
-    const locs=[...new Set(orderItems.map(i=>i.locations[0]||'General'))].sort();
-    locs.forEach(loc=>{
-      const li=orderItems.filter(i=>(i.locations[0]||'General')===loc);
-      html+=`<div class="order-loc-grp" style="margin-bottom:14px">
-        <div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none;display:flex;justify-content:space-between"><span>${loc}</span><span style="font-size:12px;color:#aaa">${li.length} item${li.length>1?'s':''}</span></div>
-        <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#fff"><span></span><span>Item</span><span>Order UoM</span><span style="text-align:center">Qty</span></div>`;
-      li.forEach(item=>{
-        const qty=calcOrderQty(item);
-        const dispName=item.orderName||item.name;
-        const dispPhoto=item.orderPhoto||item.photo||photoCache['order_'+item.id]||photoCache[item.id]||null;
-        const thumb=dispPhoto?`<img src="${dispPhoto}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #f0f0eb;flex-shrink:0">`:'<div style="width:32px;height:32px;border-radius:6px;background:#f5f5f0;border:1px solid #f0f0eb;flex-shrink:0"></div>';
-        const sbreak=item.sectionBreak?'<div style="height:2px;background:#1a1a1a;margin:4px 0"></div>':'';
-        html+=sbreak+`<div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
-          ${thumb}
-          <span style="font-weight:500">${dispName}</span>
-          <span style="color:#aaa">${item.orderUom}</span>
-          <span style="text-align:center;font-weight:700">${qty}</span></div>`;
-      });
-      html+=`</div></div>`;
+    // Single column — sorted by print order, no location grouping
+    const sorted=[...orderItems].sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+    let html=`<div style="border:1px solid #e8e8e3;border-radius:10px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#f5f5f0;border-bottom:1px solid #e8e8e3"><span></span><span>Item</span><span>Order UoM</span><span style="text-align:center">Qty</span></div>`;
+    sorted.forEach((item,idx)=>{
+      const qty=calcOrderQty(item);
+      const dispName=item.orderName||item.name;
+      const dispPhoto=item.orderPhoto||item.photo||photoCache['order_'+item.id]||photoCache[item.id]||null;
+      const thumb=dispPhoto?`<img src="${dispPhoto}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #f0f0eb;flex-shrink:0">`:'<div style="width:32px;height:32px;border-radius:6px;background:#f5f5f0;border:1px solid #f0f0eb;flex-shrink:0"></div>';
+      if(item.sectionBreak&&idx>0){
+        html+=`<div style="height:2px;background:#1a1a1a"></div>`;
+      }
+      html+=`<div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+        ${thumb}
+        <span style="font-weight:500">${dispName}</span>
+        <span style="color:#aaa">${item.orderUom}</span>
+        <span style="text-align:center;font-weight:700">${qty}</span></div>`;
     });
+    html+=`</div>`;
     document.getElementById('ov-body').innerHTML=html;
   }
 }
