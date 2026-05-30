@@ -1051,7 +1051,9 @@ function viewHistEntry(hid){
       <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
         <div style="display:grid;grid-template-columns:1fr 100px 80px;gap:8px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#fff"><span>Item</span><span>UoM</span><span style="text-align:center">Count</span></div>`;
     li.forEach(item=>{
-      const sc=entry.counts[String(item.id)]||entry.counts[item.id]||{};const cv=sc[loc];
+      const raw=entry.counts[String(item.id)]||entry.counts[item.id]||{};
+      const sc=(raw.counts!==undefined&&raw.savedBy!==undefined)?raw.counts:raw;
+      const cv=sc[loc];
       html+=`<div style="display:grid;grid-template-columns:1fr 100px 80px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
         <span>${item.name}</span><span style="color:#aaa">${item.countUom||item.orderUom}</span>
         <span style="text-align:center;font-weight:600">${cv!==undefined&&cv!==null?cv:'—'}</span></div>`;
