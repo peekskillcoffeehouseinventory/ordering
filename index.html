@@ -514,6 +514,7 @@ function csvSplit(line){
 const WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 let vendors=[], locations=[], items=[], history=[];
 let addSectionBreak=false, editSectionBreak=false;
+let sessionCounts={}; // tracks only counts entered THIS session {vendorName: {itemId: {loc: val}}}
 const photoCache={}; // stores base64 photos by item id, survives reloadItems()
 let role='teamlead', activeDay=WEEKDAYS[(new Date().getDay()+6)%7], activeVendor=null, prevView='dash';
 let nextId=1000, addLocSelections=[], editLocSelections=[], avDaySelections=[];
@@ -785,18 +786,18 @@ function renderCountView(){
       const isNewFormat = data.counts!==undefined&&data.savedBy!==undefined;
       const countsData = isNewFormat ? data.counts : data;
       const contributors = (isNewFormat&&data.contributors)||{};
+      const savedBy = isNewFormat ? data.savedBy : null;
       // Always restore count values if item has no active memory counts
       if(!item.counts||!Object.keys(item.counts).length){
         if(countsData) item.counts=JSON.parse(JSON.stringify(countsData||{}));
       }
-      // Determine color: use THIS user's own color from contributors map if they contributed
-      // otherwise show the savedBy color (someone else counted this)
-      if(myName && contributors[myName]){
-        // I counted this — my color will be applied via active input, don't set savedColor
-      } else if(isNewFormat && data.color){
-        // Someone else counted this — show their color
+      // Show color of whoever LAST saved this specific item (savedBy)
+      // If that's me, don't set savedColor (active input will show my color)
+      // If it's someone else, show their color
+      if(savedBy && savedBy !== myName && isNewFormat && data.color){
         savedColors[id]=data.color;
       }
+      // If I was the last to save this item, savedColor stays empty — my color shows via active input
     });
   }
   let html='';
@@ -835,6 +836,10 @@ function updateCount(id,loc,val){
   const item=items.find(i=>i.id===id);if(!item) return;
   if(!item.counts) item.counts={};
   item.counts[loc]=val===''?null:parseFloat(val);
+  // Track that this item/loc was entered this session
+  if(!sessionCounts[activeVendor]) sessionCounts[activeVendor]={};
+  if(!sessionCounts[activeVendor][id]) sessionCounts[activeVendor][id]={};
+  sessionCounts[activeVendor][id][loc]=true;
   const safeId=String(id)+'-'+loc.replace(/[^a-z0-9]/gi,'_');
   const inp=document.getElementById('ci-'+safeId);
   if(inp){
@@ -860,17 +865,22 @@ async function confirmSave(){
   const now=new Date();
   const todayKey=now.toDateString()+'_'+activeVendor;
 
-  // Build counts with per-person color metadata
+  // Only save items actually entered THIS session — not restored from history
+  const mySession = sessionCounts[activeVendor]||{};
+  console.log('Session items to save:', Object.keys(mySession).length, JSON.stringify(Object.keys(mySession)));
   const countData={};
   vendorItems(activeVendor).forEach(i=>{
-    if(i.counts && Object.keys(i.counts).length){
-      const cleanCounts={};
-      Object.entries(i.counts).forEach(([loc,val])=>{
-        if(val!==null&&val!==undefined) cleanCounts[loc]=val;
-      });
-      if(Object.keys(cleanCounts).length){
-        countData[i.id]={counts:cleanCounts, savedBy:name, color:color, contributors:{[name]:color}};
-      }
+    const sessionLocs = mySession[i.id]||{};
+    if(!Object.keys(sessionLocs).length) return; // skip items not entered this session
+    const cleanCounts={};
+    Object.entries(sessionLocs).forEach(([loc])=>{
+      const val = i.counts[loc];
+      if(val!==null&&val!==undefined) cleanCounts[loc]=val;
+    });
+    if(Object.keys(cleanCounts).length){
+      const existingEntry = history.find(h=>h.vendor===activeVendor&&new Date(h.date).toDateString()===now.toDateString());
+      const existingContribs=(existingEntry&&existingEntry.counts&&existingEntry.counts[i.id]&&existingEntry.counts[i.id].contributors)||{};
+      countData[i.id]={counts:cleanCounts, savedBy:name, color:color, contributors:Object.assign({},existingContribs,{[name]:color})};
     }
   });
 
@@ -912,7 +922,9 @@ async function confirmSave(){
 }
 function clearCounts(){
   if(!confirm('Clear all counts for '+activeVendor+'?')) return;
-  vendorItems(activeVendor).forEach(i=>i.counts={});renderCountView();
+  vendorItems(activeVendor).forEach(i=>i.counts={});
+  if(sessionCounts[activeVendor]) delete sessionCounts[activeVendor];
+  renderCountView();
 }
 
 // ─── ORDER / PRINT VIEW ───────────────────────────────────────────────────
@@ -1437,11 +1449,9 @@ async function openInventoryMode(){
     Object.entries(invEntry.counts).forEach(([k,data])=>{
       if(data&&data.value!==undefined){
         invCounts[k] = data.value;
-        const contributors = data.contributors||{};
-        // Only show someone else's color — own color comes from active input
-        if(myName && contributors[myName]){
-          // I counted this — don't set saved color, my active color will show
-        } else if(data.color){
+        // Show color of whoever last saved this item
+        // If it was me, don't set saved color (active input shows my color)
+        if(data.savedBy && data.savedBy !== myName && data.color){
           invSavedColors[k] = data.color;
         }
       } else if(data!==null&&data!==undefined&&typeof data !== 'object'){
@@ -1496,6 +1506,9 @@ function updateInvCount(el){
   const val = el.value;
   const k = id+'_'+loc;
   invCounts[k] = val===''?null:parseFloat(val);
+  // Track as entered this session
+  if(!sessionCounts['__INVENTORY__']) sessionCounts['__INVENTORY__']={};
+  sessionCounts['__INVENTORY__'][k]=true;
   // No par comparison in inventory mode — just show user color immediately
   el.className='count-inp';
   const myColor = userProfile?userProfile.color:'';
@@ -1511,11 +1524,15 @@ async function saveInventoryCounts(){
   const color = (userProfile&&userProfile.color)||'#1a1a1a';
   const now = new Date();
 
-  // Build count data with contributors map, skip nulls
+  // Only save counts entered THIS session
+  const myInvSession = sessionCounts['__INVENTORY__']||{};
   const countData = {};
   Object.entries(invCounts).forEach(([k,val])=>{
+    if(!myInvSession[k]) return; // skip if not entered this session
     if(val!==null&&val!==undefined){
-      countData[k] = {value:val, savedBy:name, color:color, contributors:{[name]:color}};
+      const existingEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===now.toISOString().slice(0,7));
+      const existingContribs=(existingEntry&&existingEntry.counts&&existingEntry.counts[k]&&existingEntry.counts[k].contributors)||{};
+      countData[k] = {value:val, savedBy:name, color:color, contributors:Object.assign({},existingContribs,{[name]:color})};
       invSavedColors[k] = color;
     }
   });
