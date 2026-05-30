@@ -777,22 +777,23 @@ function renderCountView(){
   const todayEntry=history.find(h=>h.vendor===activeVendor&&new Date(h.date).toDateString()===now.toDateString());
   const savedColors={};
   if(todayEntry&&todayEntry.counts){
+    const myName = userProfile?userProfile.name:'';
     Object.entries(todayEntry.counts).forEach(([id,data])=>{
       if(!data) return;
       const item=items.find(i=>String(i.id)===String(id));
       if(!item) return;
-      // New format: {counts:{loc:val}, savedBy, color}
-      if(data.counts!==undefined&&data.savedBy!==undefined){
-        if(data.color) savedColors[id]=data.color;
-        if(!item.counts||!Object.keys(item.counts).length){
-          item.counts=JSON.parse(JSON.stringify(data.counts||{}));
-        }
-      } else {
-        // Old format: {loc:val} directly — still restore it
-        if(!item.counts||!Object.keys(item.counts).length){
-          item.counts=JSON.parse(JSON.stringify(data));
-        }
+      const isNewFormat = data.counts!==undefined&&data.savedBy!==undefined;
+      const savedBy = isNewFormat ? data.savedBy : null;
+      const color = isNewFormat ? data.color : null;
+      const countsData = isNewFormat ? data.counts : data;
+      const isMine = myName && savedBy === myName;
+      // Always restore the count values if item has no active memory counts
+      if(!item.counts||!Object.keys(item.counts).length){
+        if(countsData) item.counts=JSON.parse(JSON.stringify(countsData||{}));
       }
+      // Only show saved color if it's NOT from this user
+      // (this user's color comes from their active input, not from history)
+      if(color && !isMine) savedColors[id]=color;
     });
   }
   let html='';
