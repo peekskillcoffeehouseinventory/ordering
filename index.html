@@ -1433,10 +1433,17 @@ async function openInventoryMode(){
   const thisMonth = now.toISOString().slice(0,7);
   const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
   if(invEntry&&invEntry.counts){
+    const myName = userProfile?userProfile.name:'';
     Object.entries(invEntry.counts).forEach(([k,data])=>{
       if(data&&data.value!==undefined){
         invCounts[k] = data.value;
-        if(data.color) invSavedColors[k] = data.color;
+        const contributors = data.contributors||{};
+        // Only show someone else's color — own color comes from active input
+        if(myName && contributors[myName]){
+          // I counted this — don't set saved color, my active color will show
+        } else if(data.color){
+          invSavedColors[k] = data.color;
+        }
       } else if(data!==null&&data!==undefined&&typeof data !== 'object'){
         invCounts[k] = data;
       }
@@ -1488,15 +1495,14 @@ function updateInvCount(el){
   const loc = el.dataset.loc;
   const val = el.value;
   const k = id+'_'+loc;
-  const safeId = id+'_'+loc.replace(/[^a-z0-9]/gi,'_');
   invCounts[k] = val===''?null:parseFloat(val);
-  const item = items.find(i=>String(i.id)===String(id));
-  if(el && item) el.className='count-inp'+(invCounts[k]!==null&&invCounts[k]<item.par?' low':'');
-  const ov = document.getElementById('inv-ov-'+safeId);
-  if(ov && item){
-    const cv = invCounts[k];
-    ov.className='order-val '+(cv===null||cv===undefined?'empty':cv>=item.par?'ok':'needs');
-    ov.textContent = cv===null||cv===undefined?'—':cv>=item.par?'✓':cv;
+  // No par comparison in inventory mode — just show user color immediately
+  el.className='count-inp';
+  const myColor = userProfile?userProfile.color:'';
+  if(myColor && invCounts[k]!==null){
+    el.style.border='2px solid '+myColor;
+  } else {
+    el.style.border='';
   }
 }
 
@@ -1505,24 +1511,31 @@ async function saveInventoryCounts(){
   const color = (userProfile&&userProfile.color)||'#1a1a1a';
   const now = new Date();
 
-  // Build count data with color metadata, skip nulls
+  // Build count data with contributors map, skip nulls
   const countData = {};
   Object.entries(invCounts).forEach(([k,val])=>{
     if(val!==null&&val!==undefined){
-      countData[k] = {value:val, savedBy:name, color:color};
+      countData[k] = {value:val, savedBy:name, color:color, contributors:{[name]:color}};
       invSavedColors[k] = color;
     }
   });
 
   // Check for existing inventory entry this month
-  const thisMonth = now.toISOString().slice(0,7); // YYYY-MM
+  const thisMonth = now.toISOString().slice(0,7);
   const existingIdx = history.findIndex(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
   let entry;
   if(existingIdx>=0){
     entry = history[existingIdx];
     entry.date = now.toISOString();
     entry.teamLead = name;
-    Object.assign(entry.counts, countData);
+    // Merge additively — preserve each person's color
+    Object.entries(countData).forEach(([k,newData])=>{
+      if(entry.counts[k]){
+        const existingContribs = entry.counts[k].contributors||{};
+        newData.contributors = Object.assign({}, existingContribs, {[name]:color});
+      }
+      entry.counts[k] = newData;
+    });
     history.splice(existingIdx,1);
   } else {
     entry = {
