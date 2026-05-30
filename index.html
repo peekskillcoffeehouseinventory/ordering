@@ -806,7 +806,10 @@ function renderCountView(){
       const low=cv!==undefined&&cv!==null&&cv<item.par;
       const tc=totalCount(item);const ord=calcOrderQty(item);
       const savedColor=savedColors[String(item.id)];
-      const borderStyle=(!low&&savedColor)?'border:2px solid '+savedColor+';':'';
+      // Border: saved color if loaded from history, user color if actively counting, none if uncounted
+      const myColor=userProfile?userProfile.color:'';
+      const borderColor = savedColor ? savedColor : (cv!==undefined&&cv!==null ? myColor : '');
+      const borderStyle = borderColor ? 'border:2px solid '+borderColor+' !important;' : '';
       html+='<div class="item-row">';
       html+=thumbHTML(item.photo,36,16);
       html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||'—')+(item.locations.length>1?'<span style="color:#a78bfa;font-size:10px"> +'+( item.locations.length-1)+' loc</span>':'')+'</div></div>';
@@ -828,8 +831,17 @@ function updateCount(id,loc,val){
   const item=items.find(i=>i.id===id);if(!item) return;
   if(!item.counts) item.counts={};
   item.counts[loc]=val===''?null:parseFloat(val);
-  const inp=document.getElementById(`ci-${id}-${loc.replace(/\s/g,'_')}`);
-  if(inp) inp.className='count-inp'+(item.counts[loc]!==null&&item.counts[loc]<item.par?' low':'');
+  const safeId=String(id)+'-'+loc.replace(/[^a-z0-9]/gi,'_');
+  const inp=document.getElementById('ci-'+safeId);
+  if(inp){
+    const low=item.counts[loc]!==null&&item.counts[loc]<item.par;
+    const myColor=userProfile?userProfile.color:'';
+    inp.className='count-inp'+(low?' low':'');
+    // Apply user color border on top of red background if needed
+    if(myColor && item.counts[loc]!==null){
+      inp.style.cssText=inp.style.cssText.replace(/border:[^;]+;/g,'')+';border:2px solid '+myColor+' !important;';
+    }
+  }
   const ov=document.getElementById('ov-'+id);
   if(ov){const tc=totalCount(item);const ord=calcOrderQty(item);ov.className='order-val '+(tc===null?'empty':ord>0?'needs':'ok');ov.textContent=tc===null?'—':ord>0?ord+' '+(item.orderMethod==='par'?item.countUom:item.orderUom):'✓';}
 }
