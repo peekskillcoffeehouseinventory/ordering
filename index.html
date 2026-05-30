@@ -782,15 +782,18 @@ function renderCountView(){
   if(todayEntry&&todayEntry.counts){
     Object.entries(todayEntry.counts).forEach(([id,data])=>{
       if(!data) return;
-      // Handle new format: {counts:{loc:val}, savedBy, color}
-      if(data.color) savedColors[id]=data.color;
-      if(data.counts){
-        const item=items.find(i=>String(i.id)===String(id));
-        if(item){
-          // Only restore if item has no active counts in memory
-          if(!item.counts||!Object.keys(item.counts).length){
-            item.counts=JSON.parse(JSON.stringify(data.counts));
-          }
+      const item=items.find(i=>String(i.id)===String(id));
+      if(!item) return;
+      // New format: {counts:{loc:val}, savedBy, color}
+      if(data.counts!==undefined&&data.savedBy!==undefined){
+        if(data.color) savedColors[id]=data.color;
+        if(!item.counts||!Object.keys(item.counts).length){
+          item.counts=JSON.parse(JSON.stringify(data.counts||{}));
+        }
+      } else {
+        // Old format: {loc:val} directly — still restore it
+        if(!item.counts||!Object.keys(item.counts).length){
+          item.counts=JSON.parse(JSON.stringify(data));
         }
       }
     });
@@ -848,7 +851,14 @@ async function confirmSave(){
   const countData={};
   vendorItems(activeVendor).forEach(i=>{
     if(i.counts && Object.keys(i.counts).length){
-      countData[i.id]={counts:i.counts, savedBy:name, color:color};
+      // Only save locations that have actual non-null values
+      const cleanCounts={};
+      Object.entries(i.counts).forEach(([loc,val])=>{
+        if(val!==null&&val!==undefined) cleanCounts[loc]=val;
+      });
+      if(Object.keys(cleanCounts).length){
+        countData[i.id]={counts:cleanCounts, savedBy:name, color:color};
+      }
     }
   });
 
