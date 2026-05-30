@@ -1049,18 +1049,30 @@ function viewHistEntry(hid){
     const li=vi.filter(i=>i.locations.includes(loc));
     html+=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none">${loc}</div>
       <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
-        <div style="display:grid;grid-template-columns:1fr 100px 80px;gap:8px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#fff"><span>Item</span><span>UoM</span><span style="text-align:center">Count</span></div>`;
+        <div style="display:grid;grid-template-columns:1fr 75px 60px 60px 80px;gap:6px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#bbb;background:#fff">
+          <span>Item</span><span>Count UoM</span><span style="text-align:center">Count</span><span style="text-align:center">Ordered</span><span>Order UoM</span>
+        </div>`;
     li.forEach(item=>{
       const raw=entry.counts[String(item.id)]||entry.counts[item.id]||{};
       const sc=(raw.counts!==undefined&&raw.savedBy!==undefined)?raw.counts:raw;
       const cv=sc[loc];
-      html+=`<div style="display:grid;grid-template-columns:1fr 100px 80px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
-        <span>${item.name}</span><span style="color:#aaa">${item.countUom||item.orderUom}</span>
-        <span style="text-align:center;font-weight:600">${cv!==undefined&&cv!==null?cv:'—'}</span></div>`;
+      const savedCount=cv!==undefined&&cv!==null?cv:null;
+      // Temporarily set counts to calculate order qty
+      const prevCounts=item.counts;
+      item.counts=savedCount!==null?{[loc]:savedCount}:{};
+      const ordQty=savedCount!==null?calcOrderQty(item):null;
+      item.counts=prevCounts;
+      html+=`<div style="display:grid;grid-template-columns:1fr 75px 60px 60px 80px;gap:6px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+        <span>${item.name}</span>
+        <span style="color:#aaa;font-size:11px">${item.countUom||'—'}</span>
+        <span style="text-align:center;font-weight:600">${savedCount!==null?savedCount:'—'}</span>
+        <span style="text-align:center;font-weight:600;color:${ordQty>0?'#dc2626':'#16a34a'}">${ordQty!==null?(ordQty>0?ordQty:'✓'):'—'}</span>
+        <span style="color:#aaa;font-size:11px">${ordQty>0?(item.orderName||item.orderUom):''}</span>
+      </div>`;
     });
     html+=`</div></div>`;
   });
-  document.getElementById('hd-body').innerHTML=html||`<div class="empty-msg">No location data for this count.</div>`;
+    document.getElementById('hd-body').innerHTML=html||`<div class="empty-msg">No location data for this count.</div>`;
 }
 
 // ─── MANAGER ──────────────────────────────────────────────────────────────
