@@ -200,18 +200,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- Team Lead Name Modal -->
-<div class="modal-overlay" id="save-modal" style="display:none">
-  <div class="modal" style="max-width:360px">
-    <h3>Save count <button class="modal-close" onclick="closeSaveModal()">×</button></h3>
-    <p style="font-size:13px;color:#888;margin-bottom:16px">Who is doing today's count?</p>
-    <div class="fi"><label>Team Lead name</label><input id="staff-name" placeholder="Enter your name" style="font-size:15px" onkeydown="if(event.key==='Enter')confirmSave()"></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-primary" onclick="confirmSave()" style="flex:1">💾 Save count</button>
-      <button class="btn" onclick="closeSaveModal()">Cancel</button>
-    </div>
-  </div>
-</div>
+<!-- staff-name hidden input for compatibility -->
+<input type="hidden" id="staff-name">
 
 <!-- Edit Modal -->
 <div class="modal-overlay" id="edit-modal" style="display:none">
@@ -785,13 +775,24 @@ function renderCountView(){
   if(!vi.length){document.getElementById('cv-body').innerHTML='<div class="empty-msg">No items for '+activeVendor+'. Add items in manager mode.</div>';return;}
   const locs=[...new Set(vi.flatMap(i=>i.locations))].sort();
   if(!locs.length){document.getElementById('cv-body').innerHTML='<div class="empty-msg">Items exist but no locations assigned. Edit in manager mode.</div>';return;}
-  // Get saved count colors for today
+  // Get saved count colors and values for today
   const now=new Date();
   const todayEntry=history.find(h=>h.vendor===activeVendor&&new Date(h.date).toDateString()===now.toDateString());
   const savedColors={};
   if(todayEntry&&todayEntry.counts){
     Object.entries(todayEntry.counts).forEach(([id,data])=>{
-      if(data&&data.color) savedColors[id]=data.color;
+      if(!data) return;
+      // Handle new format: {counts:{loc:val}, savedBy, color}
+      if(data.color) savedColors[id]=data.color;
+      if(data.counts){
+        const item=items.find(i=>String(i.id)===String(id));
+        if(item){
+          // Only restore if item has no active counts in memory
+          if(!item.counts||!Object.keys(item.counts).length){
+            item.counts=JSON.parse(JSON.stringify(data.counts));
+          }
+        }
+      }
     });
   }
   let html='';
@@ -833,12 +834,9 @@ function updateCount(id,loc,val){
   if(ov){const tc=totalCount(item);const ord=calcOrderQty(item);ov.className='order-val '+(tc===null?'empty':ord>0?'needs':'ok');ov.textContent=tc===null?'—':ord>0?ord+' '+(item.orderMethod==='par'?item.countUom:item.orderUom):'✓';}
 }
 function saveCounts(){
-  // Show name prompt modal
-  document.getElementById('staff-name').value='';
-  document.getElementById('save-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('staff-name').focus(),100);
+  confirmSave();
 }
-function closeSaveModal(){document.getElementById('save-modal').style.display='none';}
+function closeSaveModal(){} // no-op kept for compatibility
 async function confirmSave(){
   const name=document.getElementById('staff-name').value.trim()||(userProfile?userProfile.name:'')||'Team Lead';
   const color=userProfile?userProfile.color:'#1a1a1a';
@@ -1578,7 +1576,7 @@ document.addEventListener('click',e=>{
     if(sug&&wrap&&!wrap.contains(e.target)&&!sug.contains(e.target)) sug.style.display='none';
   });
   if(e.target===document.getElementById('edit-modal')) closeEditModal();
-  if(e.target===document.getElementById('save-modal')) closeSaveModal();
+
 });
 
 document.getElementById('today-lbl').textContent=WEEKDAYS[(new Date().getDay()+6)%7]+', '+new Date().toLocaleDateString([],{month:'short',day:'numeric'});
