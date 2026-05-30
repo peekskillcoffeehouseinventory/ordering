@@ -173,6 +173,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Add to Home Screen Popup -->
+<div id="a2hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center">
+    <div style="font-size:36px;margin-bottom:12px" id="a2hs-icon"></div>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Add to your Home Screen</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:16px;line-height:1.5" id="a2hs-instructions"></p>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="closeA2HS()">Got it!</button>
+  </div>
+</div>
+
 <!-- Team Lead Name Modal -->
 <div class="modal-overlay" id="save-modal" style="display:none">
   <div class="modal" style="max-width:360px">
@@ -265,6 +275,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <span><span class="sync-dot" id="sync-dot"></span><span class="sync-lbl" id="sync-lbl">Loading...</span></span>
       <span class="today-lbl" id="today-lbl"></span>
       <button class="btn btn-sm no-print" onclick="showView('history')">📋 History</button>
+      <button class="btn btn-sm no-print" onclick="openInventoryMode()" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a">📊 Inventory</button>
       <button class="role-btn" id="role-btn" onclick="toggleRole()">Team Lead</button>
     </div>
   </div>
@@ -312,6 +323,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
     </div>
     <div id="hd-body"></div>
+  </div>
+
+  <!-- INVENTORY MODE -->
+  <div id="view-inventory" class="view">
+    <button class="back-btn no-print" onclick="goBack()">← Back</button>
+    <div class="print-hdr" id="inv-print-hdr"></div>
+    <div class="view-header">
+      <div><h2>End of Month Inventory</h2><div class="view-meta" id="inv-meta"></div></div>
+      <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
+    </div>
+    <div class="name-bar no-print">
+      <label>Your name:</label>
+      <input id="inv-staff-name" type="text" placeholder="Enter your name">
+    </div>
+    <div id="inv-body"></div>
+    <div class="actions no-print">
+      <button class="btn btn-primary" onclick="saveInventoryCounts()">💾 Save counts</button>
+      <button class="btn" onclick="clearInventoryCounts()">Reset</button>
+    </div>
   </div>
 
   <div id="view-mgr" class="view">
@@ -487,7 +517,7 @@ let addOrderMethod='fixed', editOrderMethod='fixed';
 // ─── HELPERS ──────────────────────────────────────────────────────────────
 function today(){return WEEKDAYS[(new Date().getDay()+6)%7];}
 function fmtDate(d){return new Date(d).toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'});}
-function vendorItems(vname){return items.filter(i=>i.vendor===vname);}
+function vendorItems(vname){return items.filter(i=>i.vendor===vname&&i.vendor!=='__INVENTORY__');}
 function scheduleFor(day){
   const now=new Date();
   const isFirstOfMonth=now.getDate()===1&&day===WEEKDAYS[(now.getDay()+6)%7];
@@ -656,7 +686,7 @@ function showView(name){
   if(name==='mgr') renderMgr();
 }
 function goBack(){
-  const map={order:'count','hist-detail':'history',count:'dash',history:'dash',mgr:'dash'};
+  const map={order:'count','hist-detail':'history',count:'dash',history:'dash',mgr:'dash',inventory:'dash'};
   const dest=map[prevView]||'dash';
   showView(dest);if(dest==='dash') renderDash(activeDay);
 }
@@ -701,10 +731,13 @@ function renderDash(day){
 }
 
 // ─── COUNT VIEW ───────────────────────────────────────────────────────────
-function openVendor(vname){
+async function openVendor(vname){
   activeVendor=vname;document.getElementById('cv-title').textContent=vname;
   document.getElementById('cv-meta').textContent=activeDay+' count';
-  showView('count');renderCountView();
+  showView('count');
+  // Refresh data silently before rendering
+  await reloadAll();
+  renderCountView();
 }
 function renderCountView(){
   const vi=vendorItems(activeVendor);
@@ -932,7 +965,7 @@ function mgrTab(tab){
 }
 function renderMgr(){
   const sel=document.getElementById('ai-vendor');
-  if(sel) sel.innerHTML=vendors.map(v=>`<option value="${v.name}">${v.name}</option>`).join('');
+  if(sel) sel.innerHTML='<option value="__INVENTORY__">-- Inventory Only --</option>'+vendors.map(v=>`<option value="${v.name}">${v.name}</option>`).join('');
   renderItemTable();renderAvDays();
   if(!APPS_SCRIPT_URL){
     if(!document.getElementById('as-setup')){
@@ -960,9 +993,9 @@ function renderItemTable(){
     <div class="itbl-row">
       ${thumbHTML(i.photo,28,13)}
       <span style="font-weight:500">${i.name}</span>
-      <span style="color:#aaa;font-size:11px">${i.vendor}</span>
+      <span style="color:#aaa;font-size:11px">${i.vendor==='__INVENTORY__'?'📊 Inv. only':i.vendor}</span>
       <span style="font-size:11px;color:#aaa">${i.countUom||'—'} / ${i.orderUom||'—'}</span>
-      <span><span class="badge ${i.orderMethod==='par'?'badge-par':'badge-fixed'}">${i.orderMethod==='par'?'→par':'fixed'}</span></span>
+      <span>${i.vendor==='__INVENTORY__'?'<span class="badge" style="background:#f0e6ff;color:#6b21a8">inv only</span>':`<span class="badge ${i.orderMethod==='par'?'badge-par':'badge-fixed'}">${i.orderMethod==='par'?'→par':'fixed'}</span>`}</span>
       <button class="edit-btn" onclick="openEditModal(${i.id})">Edit</button>
       <button class="del-btn" onclick="deleteItem(${i.id})" title="Delete">✕</button>
     </div>`).join('')||'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">No items found</div>';
@@ -979,7 +1012,7 @@ function openEditModal(id){
   document.getElementById('edit-ordqty').value=item.orderQty||'';
   document.getElementById('edit-printorder').value=item.printOrder||'';
   const vsel=document.getElementById('edit-vendor');
-  vsel.innerHTML=vendors.map(v=>`<option value="${v.name}"${v.name===item.vendor?' selected':''}>${v.name}</option>`).join('');
+  vsel.innerHTML='<option value="__INVENTORY__"'+(item.vendor==='__INVENTORY__'?' selected':'')+'>-- Inventory Only --</option>'+vendors.map(v=>`<option value="${v.name}"${v.name===item.vendor?' selected':''}>${v.name}</option>`).join('');
   // locations
   editLocSelections=[...item.locations];renderLocChips('edit');
   // order method
@@ -1054,6 +1087,40 @@ async function saveEditItem(){
   showToast('✅ Item updated!');
   await reloadItems();
   renderItemTable();
+}
+
+async function reloadAll(){
+  // Silently refresh all data from Sheet
+  try{
+    const [vRows,lRows,iRows,hRows] = await withTimeout(
+      Promise.all([sheetRead('Vendors'),sheetRead('Locations'),sheetRead('Items'),sheetRead('History')]),
+      5000
+    );
+    vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[]}));
+    locations=lRows.map(r=>r.name).filter(Boolean);
+    const rawItems=iRows.map(r=>({
+      id:parseInt(r.id)||nextId++,
+      name:r.name||'',vendor:r.vendor||'',
+      locations:r.locations?r.locations.split('|'):[],
+      countUom:r.countUom||'',orderUom:r.orderUom||'',
+      par:parseFloat(r.par)||0,orderQty:parseFloat(r.orderQty)||0,
+      orderMethod:r.orderMethod||'fixed',
+      printOrder:parseInt(r.printOrder)||999,
+      conversionFactor:parseFloat(r.conversionFactor)||1,
+      sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
+      orderName:r.orderName||'',orderPhoto:r.orderPhoto||null,
+      photo:r.photo||null,counts:{}
+    })).filter(r=>r.name);
+    const seenIds=new Map();
+    rawItems.forEach(i=>seenIds.set(String(i.id),i));
+    items=[...seenIds.values()];
+    items.forEach(i=>{if(!i.photo&&photoCache[i.id])i.photo=photoCache[i.id];if(!i.orderPhoto&&photoCache['order_'+i.id])i.orderPhoto=photoCache['order_'+i.id];});
+    history=hRows.map(r=>({id:r.id,date:r.date,vendor:r.vendor,teamLead:r.teamLead,day:r.day,counts:tryParse(r.counts)}));
+    setSyncStatus('ok','Connected');
+  }catch(e){
+    console.warn('reloadAll failed:',e.message);
+    setSyncStatus('err','Offline');
+  }
 }
 
 async function reloadItems(){
@@ -1221,6 +1288,114 @@ function renderLocChips(mode){
   wrap.appendChild(inp);
 }
 
+// END OF MONTH INVENTORY MODE
+let invCounts = {};
+
+async function openInventoryMode(){
+  showView('inventory');
+  await reloadAll();
+  renderInventoryMode();
+}
+
+function renderInventoryMode(){
+  const now = new Date();
+  document.getElementById('inv-meta').textContent = now.toLocaleDateString([],{month:'long',year:'numeric'})+' - All locations';
+  document.getElementById('inv-print-hdr').innerHTML = '<div style="font-size:18px;font-weight:700;margin-bottom:4px">End of Month Inventory</div><div style="font-size:13px;color:#666">'+now.toLocaleDateString([],{month:'long',year:'numeric'})+'</div>';
+  const allLocs = [...new Set(items.flatMap(i=>i.locations))].sort();
+  if(!allLocs.length){
+    document.getElementById('inv-body').innerHTML='<div class="empty-msg">No items with locations assigned yet.</div>';
+    return;
+  }
+  let html='';
+  allLocs.forEach(loc=>{
+    const locItems = items.filter(i=>i.locations.includes(loc)).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+    if(!locItems.length) return;
+    html+='<div class="loc-group no-print">';
+    html+='<div class="loc-hdr">'+loc+'</div>';
+    html+='<div class="col-hdr"><span></span><span>Item</span><span style="text-align:center">Count</span><span style="text-align:center">Par</span><span style="text-align:center">On hand</span></div>';
+    locItems.forEach(item=>{
+      const safeId = String(item.id)+'_'+escapedLoc;
+      const k = String(item.id)+'_'+escapedLoc;
+      const cv = invCounts[k];
+      const low = cv!==undefined && cv!==null && cv<item.par;
+      html+='<div class="item-row">';
+      html+=thumbHTML(item.photo,36,16);
+      html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||item.orderUom||'')+'</div></div>';
+      const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
+      html+='<input class="count-inp'+(low?' low':'')+'" type="number" min="0" step="0.01" id="inv-'+safeId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="-" data-itemid="'+String(item.id)+'" data-loc="'+escapedLoc+'" oninput="updateInvCount(this)">';
+      html+='<div class="par-val">'+(item.par||'&mdash;')+'</div>';
+      html+='<div class="order-val '+(cv===undefined||cv===null?'empty':cv>=item.par?'ok':'needs')+'" id="inv-ov-'+safeId+'">'+(cv===undefined||cv===null?'-':cv>=item.par?'v':cv)+'</div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  document.getElementById('inv-body').innerHTML=html;
+}
+
+function updateInvCount(el){
+  const id = el.dataset.itemid;
+  const loc = el.dataset.loc;
+  const val = el.value;
+  const k = id+'_'+loc;
+  const safeId = id+'_'+loc.replace(/[^a-z0-9]/gi,'_');
+  invCounts[k] = val===''?null:parseFloat(val);
+  const item = items.find(i=>String(i.id)===String(id));
+  if(el && item) el.className='count-inp'+(invCounts[k]!==null&&invCounts[k]<item.par?' low':'');
+  const ov = document.getElementById('inv-ov-'+safeId);
+  if(ov && item){
+    const cv = invCounts[k];
+    ov.className='order-val '+(cv===null||cv===undefined?'empty':cv>=item.par?'ok':'needs');
+    ov.textContent = cv===null||cv===undefined?'-':cv>=item.par?'v':cv;
+  }
+}
+
+async function saveInventoryCounts(){
+  const name = document.getElementById('inv-staff-name').value.trim()||'Team Lead';
+  const now = new Date();
+  const entry = {
+    id:'inv'+Date.now(), date:now.toISOString(),
+    vendor:'INVENTORY', teamLead:name, day:'End of Month',
+    counts: JSON.parse(JSON.stringify(invCounts))
+  };
+  history.unshift(entry);
+  await sheetWrite('addHistory',{entry});
+  document.getElementById('inv-meta').textContent = now.toLocaleDateString([],{month:'long',year:'numeric'})+' - Saved by '+name+' at '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  showToast('Inventory saved!');
+}
+
+function clearInventoryCounts(){
+  if(!confirm('Clear all inventory counts?')) return;
+  invCounts = {};
+  renderInventoryMode();
+}
+
+// ADD TO HOME SCREEN POPUP
+function checkA2HS(){
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+  if(isStandalone) return;
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  const modal = document.getElementById('a2hs-modal');
+  const icon = document.getElementById('a2hs-icon');
+  const instructions = document.getElementById('a2hs-instructions');
+  if(isIOS){
+    icon.textContent='📱';
+    instructions.innerHTML='Open this page in <strong>Safari</strong>, tap the <strong>Share</strong> button (the box with an arrow pointing up), then tap <strong>"Add to Home Screen"</strong> for the best experience.';
+  } else if(isAndroid){
+    icon.textContent='📱';
+    instructions.innerHTML='Tap the <strong>three dots menu</strong> in Chrome, then tap <strong>"Add to Home Screen"</strong> for the best experience.';
+  } else {
+    icon.textContent='💻';
+    instructions.innerHTML='Open this app on your <strong>phone</strong> and add it to your home screen for the best experience.';
+  }
+  modal.style.display='flex';
+}
+function closeA2HS(){
+  document.getElementById('a2hs-modal').style.display='none';
+}
+
+
 document.addEventListener('click',e=>{
   ['add','edit'].forEach(m=>{
     const sug=document.getElementById('loc-sug-'+m);const wrap=document.getElementById('loc-multi-'+m);
@@ -1232,6 +1407,7 @@ document.addEventListener('click',e=>{
 
 document.getElementById('today-lbl').textContent=WEEKDAYS[(new Date().getDay()+6)%7]+', '+new Date().toLocaleDateString([],{month:'short',day:'numeric'});
 loadAllData();
+checkA2HS();
 </script>
 </body>
 </html>
