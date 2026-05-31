@@ -324,7 +324,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div id="view-order" class="view">
-    <button class="back-btn no-print" onclick="showView('count')">← Back to count</button>
+    <button class="back-btn no-print" id="ov-back-btn" onclick="showView('count')">← Back to count</button>
     <div class="print-hdr" id="print-hdr"></div>
     <div class="view-header">
       <div><h2 id="ov-title"></h2><div class="view-meta" id="ov-meta"></div></div>
@@ -1731,19 +1731,14 @@ function printInventorySummary(){
     html+=`</div></div>`;
   });
 
-  // Write content into hidden print iframe and print it
-  let iframe = document.getElementById('inv-print-frame');
-  if(!iframe){
-    iframe = document.createElement('iframe');
-    iframe.id = 'inv-print-frame';
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:800px;height:600px;border:none';
-    document.body.appendChild(iframe);
-  }
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write('<!DOCTYPE html><html><head><title>Inventory</title><style>body{font-family:-apple-system,sans-serif;margin:20px;color:#1a1a1a;font-size:12px}@media print{body{margin:10px}}</style></head><body>'+html+'</body></html>');
-  doc.close();
-  setTimeout(()=>{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 400);
+  // Show in order view — set content AFTER showView to override renderOrderView
+  showView('order');
+  const backBtn=document.getElementById('ov-back-btn');
+  if(backBtn) backBtn.onclick=()=>showView('inventory');
+  document.getElementById('ov-title').textContent='End of Month Inventory';
+  document.getElementById('ov-meta').textContent=now.toLocaleDateString([],{month:'long',year:'numeric'});
+  document.getElementById('print-hdr').innerHTML='<div style="font-size:18px;font-weight:700;margin-bottom:4px">End of Month Inventory</div><div style="font-size:13px;color:#666">'+now.toLocaleDateString([],{month:'long',year:'numeric'})+'</div>';
+  document.getElementById('ov-body').innerHTML=html||'<div class="empty-msg">No counts found.</div>';
 }
 
 function clearInventoryCounts(){
