@@ -160,15 +160,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .print-two-col{border:1px solid #ccc}
   .print-row{font-size:11px;padding:5px 8px}
   .order-loc-grp{page-break-inside:avoid}
-  /* Inventory two-column print layout */
-  #inv-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
-  #inv-body .loc-group{break-inside:avoid}
-  #inv-body .item-row{grid-template-columns:28px 1fr 50px!important}
-  #inv-body .item-row input{width:100%;border:1px solid #ccc!important;background:white!important;font-size:10px;padding:2px 4px}
-  #inv-body .loc-hdr{font-size:10px;padding:5px 8px}
-  #inv-body .col-hdr{font-size:9px;padding:3px 8px}
-  #inv-body .item-name{font-size:10px}
-  #inv-body .item-uom{font-size:9px}
+  /* Inventory print layout */
+  #view-inventory .view-header,#view-inventory .back-btn{display:none!important}
+  #view-inventory #inv-print-hdr{display:block!important;margin-bottom:8px}
+  #inv-body{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;align-items:start}
+  #inv-body .loc-group{break-inside:avoid;margin-bottom:6px}
+  #inv-body .item-row{grid-template-columns:24px 1fr 44px!important;padding:3px 6px!important;min-height:unset!important}
+  #inv-body .item-row input{width:100%!important;border:1px solid #999!important;background:white!important;font-size:9px!important;padding:1px 3px!important;height:18px!important;-webkit-appearance:none;border-radius:3px!important}
+  #inv-body .loc-hdr{font-size:10px!important;padding:4px 6px!important;font-weight:700}
+  #inv-body .col-hdr{font-size:8px!important;padding:2px 6px!important}
+  #inv-body .item-name{font-size:9px!important}
+  #inv-body .item-uom{font-size:8px!important;color:#888}
+  #inv-body img{width:20px!important;height:20px!important}
 }
 .print-hdr{display:none}
 </style>
@@ -1063,37 +1066,85 @@ function viewHistEntry(hid){
   document.getElementById('hd-title').textContent=entry.vendor+' — Saved Count';
   document.getElementById('hd-meta').textContent=fmtDate(entry.date)+' · Team Lead: '+entry.teamLead;
   document.getElementById('print-hdr2').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:4px">${entry.vendor} — Count Record</div><div style="font-size:13px;color:#666">${fmtDate(entry.date)} · Team Lead: ${entry.teamLead}</div>`;
-  const vi=vendorItems(entry.vendor);
-  const locs=[...new Set(vi.flatMap(i=>i.locations))].sort();
   let html='';
-  locs.forEach(loc=>{
-    const li=vi.filter(i=>i.locations.includes(loc));
-    html+=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none">${loc}</div>
-      <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
-        <div style="display:grid;grid-template-columns:1fr 75px 60px 60px 80px;gap:6px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#bbb;background:#fff">
-          <span>Item</span><span>Count UoM</span><span style="text-align:center">Count</span><span style="text-align:center">Ordered</span><span>Order UoM</span>
-        </div>`;
-    li.forEach(item=>{
-      const raw=entry.counts[String(item.id)]||entry.counts[item.id]||{};
-      const sc=(raw.counts!==undefined&&raw.savedBy!==undefined)?raw.counts:raw;
-      const cv=sc[loc];
-      const savedCount=cv!==undefined&&cv!==null?cv:null;
-      // Temporarily set counts to calculate order qty
-      const prevCounts=item.counts;
-      item.counts=savedCount!==null?{[loc]:savedCount}:{};
-      const ordQty=savedCount!==null?calcOrderQty(item):null;
-      item.counts=prevCounts;
-      html+=`<div style="display:grid;grid-template-columns:1fr 75px 60px 60px 80px;gap:6px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
-        <span>${item.name}</span>
-        <span style="color:#aaa;font-size:11px">${item.countUom||'—'}</span>
-        <span style="text-align:center;font-weight:600">${savedCount!==null?savedCount:'—'}</span>
-        <span style="text-align:center;font-weight:600;color:${ordQty>0?'#dc2626':'#16a34a'}">${ordQty!==null?(ordQty>0?ordQty:'✓'):'—'}</span>
-        <span style="color:#aaa;font-size:11px">${ordQty>0?(item.orderName||item.orderUom):''}</span>
-      </div>`;
+
+  if(entry.vendor==='INVENTORY'){
+    // Inventory history — counts stored as {itemId_loc: {value, savedBy, color}}
+    // Group by location
+    const locMap={};
+    Object.entries(entry.counts).forEach(([k,data])=>{
+      if(!data) return;
+      const val=data.value!==undefined?data.value:data;
+      if(val===null||val===undefined) return;
+      // k is itemId_escapedLoc — find the item
+      const parts=k.split('_');
+      // Try different split points to find the item
+      let item=null;
+      for(let i=1;i<parts.length;i++){
+        const id=parts.slice(0,i).join('_');
+        item=items.find(it=>String(it.id)===id);
+        if(item) break;
+      }
+      if(!item) return;
+      // Find which location matches
+      item.locations.forEach(loc=>{
+        const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
+        if(k===String(item.id)+'_'+escapedLoc){
+          if(!locMap[loc]) locMap[loc]=[];
+          locMap[loc].push({item,val,savedBy:data.savedBy||''});
+        }
+      });
     });
-    html+=`</div></div>`;
-  });
-    document.getElementById('hd-body').innerHTML=html||`<div class="empty-msg">No location data for this count.</div>`;
+    const sortedLocs=Object.keys(locMap).sort();
+    sortedLocs.forEach(loc=>{
+      const entries=locMap[loc].sort((a,b)=>(a.item.printOrder||999)-(b.item.printOrder||999));
+      html+=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none">${loc}</div>
+        <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 80px 60px 80px;gap:6px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#bbb;background:#fff">
+            <span>Item</span><span>UoM</span><span style="text-align:center">Count</span><span>By</span>
+          </div>`;
+      entries.forEach(({item,val,savedBy})=>{
+        html+=`<div style="display:grid;grid-template-columns:1fr 80px 60px 80px;gap:6px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+          <span>${item.name}</span>
+          <span style="color:#aaa;font-size:11px">${item.countUom||item.orderUom||'—'}</span>
+          <span style="text-align:center;font-weight:600">${val}</span>
+          <span style="color:#aaa;font-size:11px">${savedBy}</span>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    });
+  } else {
+    // Regular vendor history
+    const vi=vendorItems(entry.vendor);
+    const locs=[...new Set(vi.flatMap(i=>i.locations))].sort();
+    locs.forEach(loc=>{
+      const li=vi.filter(i=>i.locations.includes(loc));
+      html+=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none">${loc}</div>
+        <div style="border:1px solid #e8e8e3;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 75px 60px 60px 80px;gap:6px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#bbb;background:#fff">
+            <span>Item</span><span>Count UoM</span><span style="text-align:center">Count</span><span style="text-align:center">Ordered</span><span>Order UoM</span>
+          </div>`;
+      li.forEach(item=>{
+        const raw=entry.counts[String(item.id)]||entry.counts[item.id]||{};
+        const sc=(raw.counts!==undefined&&raw.savedBy!==undefined)?raw.counts:raw;
+        const cv=sc[loc];
+        const savedCount=cv!==undefined&&cv!==null?cv:null;
+        const prevCounts=item.counts;
+        item.counts=savedCount!==null?{[loc]:savedCount}:{};
+        const ordQty=savedCount!==null?calcOrderQty(item):null;
+        item.counts=prevCounts;
+        html+=`<div style="display:grid;grid-template-columns:1fr 75px 60px 60px 80px;gap:6px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+          <span>${item.name}</span>
+          <span style="color:#aaa;font-size:11px">${item.countUom||'—'}</span>
+          <span style="text-align:center;font-weight:600">${savedCount!==null?savedCount:'—'}</span>
+          <span style="text-align:center;font-weight:600;color:${ordQty>0?'#dc2626':'#16a34a'}">${ordQty!==null?(ordQty>0?ordQty:'✓'):'—'}</span>
+          <span style="color:#aaa;font-size:11px">${ordQty>0?(item.orderName||item.orderUom):''}</span>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    });
+  }
+  document.getElementById('hd-body').innerHTML=html||`<div class="empty-msg">No location data for this count.</div>`;
 }
 
 // ─── MANAGER ──────────────────────────────────────────────────────────────
