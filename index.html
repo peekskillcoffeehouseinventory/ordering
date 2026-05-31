@@ -328,7 +328,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="print-hdr" id="print-hdr"></div>
     <div class="view-header">
       <div><h2 id="ov-title"></h2><div class="view-meta" id="ov-meta"></div></div>
-      <button class="btn btn-primary no-print" onclick="printInventorySummary()">🖨️ Print</button>
+      <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
     </div>
     <div id="ov-body"></div>
   </div>
@@ -344,7 +344,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="print-hdr" id="print-hdr2"></div>
     <div class="view-header">
       <div><h2 id="hd-title"></h2><div class="view-meta" id="hd-meta"></div></div>
-      <button class="btn btn-primary no-print" onclick="printInventorySummary()">🖨️ Print</button>
+      <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
     </div>
     <div id="hd-body"></div>
   </div>
@@ -1731,16 +1731,19 @@ function printInventorySummary(){
     html+=`</div></div>`;
   });
 
-  // Open a dedicated print window with the summary
-  const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Inventory</title>
-    <style>
-      body{font-family:-apple-system,sans-serif;margin:20px;color:#1a1a1a}
-      @media print{body{margin:10px}}
-    </style></head><body>${html}</body></html>`);
-  win.document.close();
-  win.focus();
-  setTimeout(()=>{win.print();},400);
+  // Write content into hidden print iframe and print it
+  let iframe = document.getElementById('inv-print-frame');
+  if(!iframe){
+    iframe = document.createElement('iframe');
+    iframe.id = 'inv-print-frame';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:800px;height:600px;border:none';
+    document.body.appendChild(iframe);
+  }
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write('<!DOCTYPE html><html><head><title>Inventory</title><style>body{font-family:-apple-system,sans-serif;margin:20px;color:#1a1a1a;font-size:12px}@media print{body{margin:10px}}</style></head><body>'+html+'</body></html>');
+  doc.close();
+  setTimeout(()=>{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 400);
 }
 
 function clearInventoryCounts(){
