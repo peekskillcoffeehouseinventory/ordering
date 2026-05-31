@@ -163,8 +163,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   /* Inventory print layout */
   #view-inventory .view-header,#view-inventory .back-btn{display:none!important}
   #view-inventory #inv-print-hdr{display:block!important;margin-bottom:8px}
-  #inv-body{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;align-items:start}
-  #inv-body .loc-group{break-inside:avoid;margin-bottom:6px}
+  #inv-body{columns:2;column-gap:16px;display:block}
+  #inv-body .loc-group{break-inside:avoid;display:inline-block;width:100%;margin-bottom:8px}
   #inv-body .item-row{grid-template-columns:24px 1fr 44px!important;padding:3px 6px!important;min-height:unset!important}
   #inv-body .item-row input{width:100%!important;border:1px solid #999!important;background:white!important;font-size:9px!important;padding:1px 3px!important;height:18px!important;-webkit-appearance:none;border-radius:3px!important}
   #inv-body .loc-hdr{font-size:10px!important;padding:4px 6px!important;font-weight:700}
@@ -1589,7 +1589,7 @@ async function saveInventoryCounts(){
   console.log('Inv session keys:', Object.keys(myInvSession).length, JSON.stringify(Object.keys(myInvSession).slice(0,3)));
   const countData = {};
   const existingInvEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===now.toISOString().slice(0,7));
-  Object.entries(myInvSession).forEach(k=>{
+  Object.keys(myInvSession).forEach(k=>{
     const val = invCounts[k];
     if(val!==null&&val!==undefined){
       const existingContribs=(existingInvEntry&&existingInvEntry.counts&&existingInvEntry.counts[k]&&existingInvEntry.counts[k].contributors)||{};
