@@ -24,7 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sync-dot.syncing{background:#f59e0b}
 .sync-dot.ok{background:#22c55e}
 .sync-dot.err{background:#ef4444}
-.sync-lbl{font-size:11px;color:#aaa}
+.sync-lbl{font-size:11px;color:#aaa}.no-screen{display:none!important}
 .day-nav{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
 .day-nav::-webkit-scrollbar{height:3px}
 .day-nav::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
@@ -161,17 +161,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .print-row{font-size:11px;padding:5px 8px}
   .order-loc-grp{page-break-inside:avoid}
   /* Inventory print layout */
-  #view-inventory .view-header,#view-inventory .back-btn{display:none!important}
-  #view-inventory #inv-print-hdr{display:block!important;margin-bottom:8px}
-  #inv-body{columns:2;column-gap:16px;display:block}
-  #inv-body .loc-group{break-inside:avoid;display:inline-block;width:100%;margin-bottom:8px}
-  #inv-body .item-row{grid-template-columns:24px 1fr 44px!important;padding:3px 6px!important;min-height:unset!important}
-  #inv-body .item-row input{width:100%!important;border:1px solid #999!important;background:white!important;font-size:9px!important;padding:1px 3px!important;height:18px!important;-webkit-appearance:none;border-radius:3px!important}
-  #inv-body .loc-hdr{font-size:10px!important;padding:4px 6px!important;font-weight:700}
-  #inv-body .col-hdr{font-size:8px!important;padding:2px 6px!important}
-  #inv-body .item-name{font-size:9px!important}
-  #inv-body .item-uom{font-size:8px!important;color:#888}
-  #inv-body img{width:20px!important;height:20px!important}
+  #view-inventory .view-header,#view-inventory .back-btn,
+  #view-inventory .actions,.day-nav,.topbar,.no-print{display:none!important}
+  #view-inventory #inv-print-hdr{display:block!important;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #1a1a1a}
+  .inv-print-cols{display:table;width:100%;border-collapse:collapse}
+  .inv-print-col{display:table-cell;width:50%;vertical-align:top;padding-right:10px}
+  .inv-print-col+.inv-print-col{padding-right:0;padding-left:10px;border-left:1px solid #e0e0e0}
+  .inv-print-loc{break-inside:avoid;margin-bottom:10px}
+  .inv-print-loc-hdr{font-size:10px;font-weight:700;padding:4px 6px;background:#f5f5f0;border:1px solid #e0e0e0;border-bottom:none}
+  .inv-print-row{display:grid;grid-template-columns:22px 1fr 44px;gap:4px;align-items:center;padding:3px 6px;border:1px solid #e0e0e0;border-top:none;font-size:9px}
+  .inv-print-row img{width:18px;height:18px;object-fit:cover;border-radius:3px}
+  .inv-print-input{border:1px solid #999;border-radius:2px;width:100%;height:16px;font-size:9px;text-align:center}
+  .no-screen{display:block!important}
+  #inv-body>.loc-group{display:none!important}
 }
 .print-hdr{display:none}
 </style>
@@ -326,7 +328,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="print-hdr" id="print-hdr"></div>
     <div class="view-header">
       <div><h2 id="ov-title"></h2><div class="view-meta" id="ov-meta"></div></div>
-      <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-primary no-print" onclick="printInventorySummary()">🖨️ Print</button>
     </div>
     <div id="ov-body"></div>
   </div>
@@ -342,7 +344,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="print-hdr" id="print-hdr2"></div>
     <div class="view-header">
       <div><h2 id="hd-title"></h2><div class="view-meta" id="hd-meta"></div></div>
-      <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-primary no-print" onclick="printInventorySummary()">🖨️ Print</button>
     </div>
     <div id="hd-body"></div>
   </div>
@@ -353,7 +355,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="print-hdr" id="inv-print-hdr"></div>
     <div class="view-header">
       <div><h2>End of Month Inventory</h2><div class="view-meta" id="inv-meta"></div></div>
-      <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-primary no-print" onclick="printInventorySummary()">🖨️ Print</button>
     </div>
 <input type="hidden" id="inv-staff-name">
     <div id="inv-body"></div>
@@ -1531,33 +1533,63 @@ function renderInventoryMode(){
     document.getElementById('inv-body').innerHTML='<div class="empty-msg">No items with locations assigned yet.</div>';
     return;
   }
-  let html='';
+  // Build screen view (single column) + print view (two column) separately
+  // Screen: normal loc-group divs
+  // Print: two explicit columns side by side
+
+  // First collect all location blocks
+  const locBlocks=[];
   allLocs.forEach(loc=>{
     const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
     const locItems = items.filter(i=>i.locations.includes(loc)).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
     if(!locItems.length) return;
-    html+='<div class="loc-group">';
-    html+='<div class="loc-hdr">'+loc+'</div>';
-    html+='<div class="col-hdr" style="grid-template-columns:44px 1fr 76px"><span></span><span>Item</span><span style="text-align:center">Count</span></div>';
+
+    // Screen block
+    let screenBlock='<div class="loc-group">';
+    screenBlock+='<div class="loc-hdr">'+loc+'</div>';
+    screenBlock+='<div class="col-hdr" style="grid-template-columns:44px 1fr 76px"><span></span><span>Item</span><span style="text-align:center">Count</span></div>';
+
+    // Print block
+    let printBlock='<div class="inv-print-loc">';
+    printBlock+='<div class="inv-print-loc-hdr">'+loc+'</div>';
+
     locItems.forEach(item=>{
       const safeId = String(item.id)+'_'+escapedLoc;
       const k = String(item.id)+'_'+escapedLoc;
       const cv = invCounts[k];
       const savedColor = invSavedColors[k]||'';
       const myColor = userProfile?userProfile.color:'';
-      // Show saved color if exists, otherwise user color if actively counted, otherwise no border
       const activeColor = cv!==undefined&&cv!==null ? myColor : '';
       const borderColor = savedColor||activeColor;
       const borderStyle = borderColor?'border:2px solid '+borderColor+';':'';
-      html+='<div class="item-row" style="grid-template-columns:44px 1fr 76px">';
-      html+=thumbHTML(item.photo,36,16);
-      html+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||item.orderUom||'')+'</div></div>';
-      html+='<input class="count-inp" type="number" min="0" step="0.01" style="'+borderStyle+'" id="inv-'+safeId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="-" data-itemid="'+String(item.id)+'" data-loc="'+escapedLoc+'" oninput="updateInvCount(this)">';
-      html+='</div>';
+
+      // Screen row
+      screenBlock+='<div class="item-row" style="grid-template-columns:44px 1fr 76px">';
+      screenBlock+=thumbHTML(item.photo,36,16);
+      screenBlock+='<div><div class="item-name">'+item.name+'</div><div class="item-uom">'+(item.countUom||item.orderUom||'')+'</div></div>';
+      screenBlock+='<input class="count-inp" type="number" min="0" step="0.01" style="'+borderStyle+'" id="inv-'+safeId+'" value="'+(cv!==undefined&&cv!==null?cv:'')+'" placeholder="-" data-itemid="'+String(item.id)+'" data-loc="'+escapedLoc+'" oninput="updateInvCount(this)">';
+      screenBlock+='</div>';
+
+      // Print row
+      const photoHtml = item.photo?'<img src="'+item.photo+'" style="width:18px;height:18px;object-fit:cover;border-radius:3px">':'<div style="width:18px;height:18px"></div>';
+      printBlock+='<div class="inv-print-row">'+photoHtml+'<span>'+item.name+'<br><span style="color:#aaa;font-size:8px">'+(item.countUom||item.orderUom||'')+'</span></span><input class="inv-print-input" value="'+(cv!==undefined&&cv!==null?cv:'')+'"></div>';
     });
-    html+='</div>';
+
+    screenBlock+='</div>';
+    printBlock+='</div>';
+    locBlocks.push({screen:screenBlock, print:printBlock});
   });
-  document.getElementById('inv-body').innerHTML=html;
+
+  // Screen: all blocks single column
+  const screenHtml = locBlocks.map(b=>b.screen).join('');
+
+  // Print: split into two columns by count
+  const half = Math.ceil(locBlocks.length/2);
+  const leftBlocks = locBlocks.slice(0,half).map(b=>b.print).join('');
+  const rightBlocks = locBlocks.slice(half).map(b=>b.print).join('');
+  const printHtml = '<div class="inv-print-cols no-screen"><div class="inv-print-col">'+leftBlocks+'</div><div class="inv-print-col">'+rightBlocks+'</div></div>';
+
+  document.getElementById('inv-body').innerHTML=screenHtml+printHtml;
 }
 
 function updateInvCount(el){
@@ -1627,6 +1659,84 @@ async function saveInventoryCounts(){
   document.getElementById('inv-meta').textContent = now.toLocaleDateString([],{month:'long',year:'numeric'})+' - Saved by '+name+' at '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   showToast('✅ Inventory saved!');
   renderInventoryMode();
+}
+
+function printInventorySummary(){
+  // Build the same clean summary view as history detail, then print
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  // Use current invCounts (live) merged with any saved history entry
+  const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+
+  // Build location map from current invCounts + saved history
+  const locMap={};
+  const addToLocMap=(itemId, loc, val, savedBy)=>{
+    const item = items.find(i=>String(i.id)===String(itemId));
+    if(!item||val===null||val===undefined) return;
+    if(!locMap[loc]) locMap[loc]=[];
+    // avoid duplicates
+    if(!locMap[loc].find(e=>e.item.id===item.id))
+      locMap[loc].push({item, val, savedBy:savedBy||''});
+  };
+
+  // First load from saved history
+  if(invEntry&&invEntry.counts){
+    Object.entries(invEntry.counts).forEach(([k,data])=>{
+      if(!data) return;
+      const val=data.value!==undefined?data.value:data;
+      const savedBy=data.savedBy||'';
+      items.forEach(item=>{
+        item.locations.forEach(loc=>{
+          const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
+          if(k===String(item.id)+'_'+escapedLoc) addToLocMap(item.id,loc,val,savedBy);
+        });
+      });
+    });
+  }
+  // Then overlay live invCounts (may have unsaved entries)
+  Object.entries(invCounts).forEach(([k,val])=>{
+    if(val===null||val===undefined) return;
+    items.forEach(item=>{
+      item.locations.forEach(loc=>{
+        const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
+        if(k===String(item.id)+'_'+escapedLoc){
+          const existing=locMap[loc]&&locMap[loc].find(e=>e.item.id===item.id);
+          if(existing) existing.val=val;
+          else addToLocMap(item.id,loc,val,userProfile?userProfile.name:'');
+        }
+      });
+    });
+  });
+
+  const sortedLocs=Object.keys(locMap).sort();
+  let html=`<div style="font-size:16px;font-weight:700;margin-bottom:2px">End of Month Inventory</div>
+    <div style="font-size:12px;color:#666;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #1a1a1a">${now.toLocaleDateString([],{month:'long',year:'numeric'})}</div>`;
+
+  sortedLocs.forEach(loc=>{
+    const entries=locMap[loc].sort((a,b)=>(a.item.printOrder||999)-(b.item.printOrder||999));
+    html+=`<div style="margin-bottom:12px;break-inside:avoid">
+      <div style="font-size:12px;font-weight:700;padding:5px 10px;background:#f5f5f0;border:1px solid #e0e0e0;border-bottom:none">${loc}</div>
+      <div style="border:1px solid #e0e0e0;border-top:none">
+        <div style="display:grid;grid-template-columns:1fr 80px 60px 80px;gap:6px;padding:4px 10px;font-size:9px;font-weight:700;text-transform:uppercase;color:#bbb;background:#fff">
+          <span>Item</span><span>UoM</span><span style="text-align:center">Count</span><span>By</span>
+        </div>`;
+    entries.forEach(({item,val,savedBy})=>{
+      html+=`<div style="display:grid;grid-template-columns:1fr 80px 60px 80px;gap:6px;align-items:center;padding:5px 10px;border-top:1px solid #f0f0eb;font-size:11px;background:#fff">
+        <span>${item.name}</span>
+        <span style="color:#aaa;font-size:10px">${item.countUom||item.orderUom||'—'}</span>
+        <span style="text-align:center;font-weight:600">${val}</span>
+        <span style="color:#aaa;font-size:10px">${savedBy}</span>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+
+  // Open print view (same as order list view)
+  document.getElementById('ov-title').textContent='End of Month Inventory';
+  document.getElementById('ov-meta').textContent=now.toLocaleDateString([],{month:'long',year:'numeric'});
+  document.getElementById('ov-body').innerHTML=html;
+  showView('order');
+  setTimeout(()=>window.print(),300);
 }
 
 function clearInventoryCounts(){
