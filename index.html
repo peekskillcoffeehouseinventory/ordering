@@ -1064,7 +1064,8 @@ function renderHistory(){
 function toggleWeek(wk){document.getElementById('wk-'+wk)?.classList.toggle('open');}
 function viewHistEntry(hid){
   const entry=history.find(h=>h.id===hid);if(!entry) return;
-  prevView='history';showView('hist-detail');
+  prevView=entry.vendor==='INVENTORY'?'inventory':'history';
+  showView('hist-detail');
   document.getElementById('hd-title').textContent=entry.vendor+' — Saved Count';
   document.getElementById('hd-meta').textContent=fmtDate(entry.date)+' · Team Lead: '+entry.teamLead;
   document.getElementById('print-hdr2').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:4px">${entry.vendor} — Count Record</div><div style="font-size:13px;color:#666">${fmtDate(entry.date)} · Team Lead: ${entry.teamLead}</div>`;
@@ -1662,83 +1663,15 @@ async function saveInventoryCounts(){
 }
 
 function printInventorySummary(){
-  // Build the same clean summary view as history detail, then print
   const now = new Date();
   const thisMonth = now.toISOString().slice(0,7);
-  // Use current invCounts (live) merged with any saved history entry
   const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
-
-  // Build location map from current invCounts + saved history
-  const locMap={};
-  const addToLocMap=(itemId, loc, val, savedBy)=>{
-    const item = items.find(i=>String(i.id)===String(itemId));
-    if(!item||val===null||val===undefined) return;
-    if(!locMap[loc]) locMap[loc]=[];
-    // avoid duplicates
-    if(!locMap[loc].find(e=>e.item.id===item.id))
-      locMap[loc].push({item, val, savedBy:savedBy||''});
-  };
-
-  // First load from saved history
-  if(invEntry&&invEntry.counts){
-    Object.entries(invEntry.counts).forEach(([k,data])=>{
-      if(!data) return;
-      const val=data.value!==undefined?data.value:data;
-      const savedBy=data.savedBy||'';
-      items.forEach(item=>{
-        item.locations.forEach(loc=>{
-          const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
-          if(k===String(item.id)+'_'+escapedLoc) addToLocMap(item.id,loc,val,savedBy);
-        });
-      });
-    });
+  if(invEntry){
+    viewHistEntry(invEntry.id);
+  } else {
+    // No saved entry yet — prompt to save first
+    showToast('Please save your counts first, then print.');
   }
-  // Then overlay live invCounts (may have unsaved entries)
-  Object.entries(invCounts).forEach(([k,val])=>{
-    if(val===null||val===undefined) return;
-    items.forEach(item=>{
-      item.locations.forEach(loc=>{
-        const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
-        if(k===String(item.id)+'_'+escapedLoc){
-          const existing=locMap[loc]&&locMap[loc].find(e=>e.item.id===item.id);
-          if(existing) existing.val=val;
-          else addToLocMap(item.id,loc,val,userProfile?userProfile.name:'');
-        }
-      });
-    });
-  });
-
-  const sortedLocs=Object.keys(locMap).sort();
-  let html=`<div style="font-size:16px;font-weight:700;margin-bottom:2px">End of Month Inventory</div>
-    <div style="font-size:12px;color:#666;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #1a1a1a">${now.toLocaleDateString([],{month:'long',year:'numeric'})}</div>`;
-
-  sortedLocs.forEach(loc=>{
-    const entries=locMap[loc].sort((a,b)=>(a.item.printOrder||999)-(b.item.printOrder||999));
-    html+=`<div style="margin-bottom:12px;break-inside:avoid">
-      <div style="font-size:12px;font-weight:700;padding:5px 10px;background:#f5f5f0;border:1px solid #e0e0e0;border-bottom:none">${loc}</div>
-      <div style="border:1px solid #e0e0e0;border-top:none">
-        <div style="display:grid;grid-template-columns:1fr 80px 60px 80px;gap:6px;padding:4px 10px;font-size:9px;font-weight:700;text-transform:uppercase;color:#bbb;background:#fff">
-          <span>Item</span><span>UoM</span><span style="text-align:center">Count</span><span>By</span>
-        </div>`;
-    entries.forEach(({item,val,savedBy})=>{
-      html+=`<div style="display:grid;grid-template-columns:1fr 80px 60px 80px;gap:6px;align-items:center;padding:5px 10px;border-top:1px solid #f0f0eb;font-size:11px;background:#fff">
-        <span>${item.name}</span>
-        <span style="color:#aaa;font-size:10px">${item.countUom||item.orderUom||'—'}</span>
-        <span style="text-align:center;font-weight:600">${val}</span>
-        <span style="color:#aaa;font-size:10px">${savedBy}</span>
-      </div>`;
-    });
-    html+=`</div></div>`;
-  });
-
-  // Show in order view — set content AFTER showView to override renderOrderView
-  showView('order');
-  const backBtn=document.getElementById('ov-back-btn');
-  if(backBtn) backBtn.onclick=()=>showView('inventory');
-  document.getElementById('ov-title').textContent='End of Month Inventory';
-  document.getElementById('ov-meta').textContent=now.toLocaleDateString([],{month:'long',year:'numeric'});
-  document.getElementById('print-hdr').innerHTML='<div style="font-size:18px;font-weight:700;margin-bottom:4px">End of Month Inventory</div><div style="font-size:13px;color:#666">'+now.toLocaleDateString([],{month:'long',year:'numeric'})+'</div>';
-  document.getElementById('ov-body').innerHTML=html||'<div class="empty-msg">No counts found.</div>';
 }
 
 function clearInventoryCounts(){
