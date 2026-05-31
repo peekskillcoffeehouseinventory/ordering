@@ -1731,12 +1731,16 @@ function printInventorySummary(){
     html+=`</div></div>`;
   });
 
-  // Open print view (same as order list view)
-  document.getElementById('ov-title').textContent='End of Month Inventory';
-  document.getElementById('ov-meta').textContent=now.toLocaleDateString([],{month:'long',year:'numeric'});
-  document.getElementById('ov-body').innerHTML=html;
-  showView('order');
-  setTimeout(()=>window.print(),300);
+  // Open a dedicated print window with the summary
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Inventory</title>
+    <style>
+      body{font-family:-apple-system,sans-serif;margin:20px;color:#1a1a1a}
+      @media print{body{margin:10px}}
+    </style></head><body>${html}</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{win.print();},400);
 }
 
 function clearInventoryCounts(){
