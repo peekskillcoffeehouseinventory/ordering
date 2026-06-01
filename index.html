@@ -204,6 +204,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- Edit Vendor Modal -->
+<div class="modal-overlay" id="edit-vendor-modal" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <h3>Edit Vendor <button class="modal-close" onclick="closeEditVendorModal()">×</button></h3>
+    <div class="form-2">
+      <div class="fi"><label>Vendor name</label><input id="ev-name" placeholder="Vendor name"></div>
+      <div class="fi"><label>Emoji icon</label><input id="ev-emoji" placeholder="🏪" maxlength="2" style="font-size:20px;width:60px"></div>
+    </div>
+    <div class="fi"><label>Count days</label><div class="day-chip-wrap" id="ev-days"></div></div>
+    <div class="form-2">
+      <div class="fi"><label>Phone</label><input id="ev-phone" placeholder="e.g. 914-555-0100" type="tel"></div>
+      <div class="fi"><label>Email</label><input id="ev-email" placeholder="orders@vendor.com" type="email"></div>
+    </div>
+    <div class="fi"><label>Website</label><input id="ev-website" placeholder="e.g. vendor.com"></div>
+    <div class="fi"><label>Ordering instructions</label><textarea id="ev-instructions" style="width:100%;padding:8px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;min-height:60px"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="saveEditVendor()" style="flex:1">Save</button>
+      <button class="btn" onclick="closeEditVendorModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add to Home Screen Popup -->
 <div id="a2hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center">
@@ -457,12 +479,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="fi"><label>Emoji icon</label><input id="av-emoji" placeholder="🏪" maxlength="2" style="font-size:20px;width:60px"></div>
           </div>
           <div class="fi"><label>Count days</label><div class="day-chip-wrap" id="av-days"></div></div>
+          <div class="form-2">
+            <div class="fi"><label>Phone <span style="font-weight:400;color:#aaa">(optional)</span></label><input id="av-phone" placeholder="e.g. 914-555-0100" type="tel"></div>
+            <div class="fi"><label>Email <span style="font-weight:400;color:#aaa">(optional)</span></label><input id="av-email" placeholder="orders@vendor.com" type="email"></div>
+          </div>
+          <div class="fi"><label>Website <span style="font-weight:400;color:#aaa">(optional)</span></label><input id="av-website" placeholder="e.g. vendor.com"></div>
+          <div class="fi"><label>Ordering instructions <span style="font-weight:400;color:#aaa">(optional)</span></label><textarea id="av-instructions" placeholder="e.g. Order by Tuesday 5pm via website. Min order $200." style="width:100%;padding:8px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;min-height:60px"></textarea></div>
           <button class="btn btn-primary" style="margin-top:10px" onclick="addVendor()">+ Add vendor</button>
         </div>
         <div class="mgr-card">
           <h3>🏪 All vendors</h3>
           <div class="vtbl">
-            <div class="vtbl-hdr"><span>Icon</span><span>Name</span><span>Days</span><span>Items</span><span></span></div>
+            <div class="vtbl-hdr"><span>Icon</span><span>Name</span><span>Days</span><span>Items</span><span></span><span></span></div>
             <div id="vtbl-body"></div>
           </div>
         </div>
@@ -485,7 +513,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbyU9X0-n88LwlezX4Yk8-loI0TWNwNB2qYTDMmtV-kcP7HQ8WcOwgrvG-xAUb6PwwPG7w/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbzBcUBIhrK3k0s-S-kFPwaE293exjATQ2Ilhj1Ih5pdk84G949Acvo8cqEL8RSgvCSsoA/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -950,7 +978,14 @@ function renderOrderView(){
   const dateStr=now.toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('ov-title').textContent=activeVendor+' — Order List';
   document.getElementById('ov-meta').textContent=dateStr+(tl?' · '+tl:'');
-  document.getElementById('print-hdr').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:2px">${activeVendor} — Order List</div><div style="font-size:12px;color:#666">${dateStr}${tl?' · Team Lead: '+tl:''}</div>`;
+  const vInfo=vendors.find(v=>v.name===activeVendor)||{};
+  const contactParts=[];
+  if(vInfo.phone) contactParts.push('📞 '+vInfo.phone);
+  if(vInfo.email) contactParts.push('✉️ '+vInfo.email);
+  if(vInfo.website) contactParts.push('🌐 '+vInfo.website);
+  const contactLine=contactParts.length?`<div style="font-size:12px;color:#444;margin-top:4px">${contactParts.join(' &nbsp;·&nbsp; ')}</div>`:'';
+  const instrLine=vInfo.instructions?`<div style="font-size:12px;color:#555;margin-top:6px;padding:6px 8px;background:#f9f9f7;border-left:3px solid #d0d0cb;border-radius:0 4px 4px 0"><strong>Ordering instructions:</strong> ${vInfo.instructions}</div>`:'';
+  document.getElementById('print-hdr').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:2px">${activeVendor} — Order List</div><div style="font-size:12px;color:#666">${dateStr}${tl?' · Team Lead: '+tl:''}</div>${contactLine}${instrLine}`;
 
   const orderItems=items.filter(i=>i.vendor===activeVendor&&needsOrder(i));
   if(!orderItems.length){document.getElementById('ov-body').innerHTML=`<div class="empty-msg">✅ Nothing to order — all items at or above par.</div>`;return;}
@@ -1295,7 +1330,7 @@ async function reloadAll(){
       Promise.all([sheetRead('Vendors'),sheetRead('Locations'),sheetRead('Items'),sheetRead('History')]),
       5000
     );
-    vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[]}));
+    vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||''}));
     locations=lRows.map(r=>r.name).filter(Boolean);
     const rawItems=iRows.map(r=>({
       id:parseInt(r.id)||nextId++,
@@ -1399,6 +1434,7 @@ function renderVendorTable(){
     <div class="vtbl-row"><span style="font-size:20px">${v.emoji}</span><span style="font-weight:500">${v.name}</span>
       <span style="font-size:12px;color:#aaa">${v.days.join(', ')}</span>
       <span style="font-size:12px;color:#aaa">${vendorItems(v.name).length}</span>
+      <button class="edit-btn" onclick="openEditVendorModal('${v.id}')">Edit</button>
       <button class="del-btn" onclick="deleteVendor('${v.id}')">✕</button></div>`).join('');
 }
 function renderLocList(){
@@ -1414,13 +1450,75 @@ function renderAvDays(){
 function toggleAvDay(d){avDaySelections=avDaySelections.includes(d)?avDaySelections.filter(x=>x!==d):[...avDaySelections,d];renderAvDays();}
 
 async function addVendor(){
-  const name=document.getElementById('av-name').value.trim();const emoji=document.getElementById('av-emoji').value.trim()||'📦';
-  if(!name){alert('Vendor name required.');return;}if(!avDaySelections.length){alert('Select at least one day.');return;}
-  const v={id:'v'+Date.now(),name,emoji,days:[...avDaySelections]};vendors.push(v);
+  const name=document.getElementById('av-name').value.trim();
+  const emoji=document.getElementById('av-emoji').value.trim()||'📦';
+  if(!name){alert('Vendor name required.');return;}
+  if(!avDaySelections.length){alert('Select at least one day.');return;}
+  const v={
+    id:'v'+Date.now(),name,emoji,days:[...avDaySelections],
+    phone:document.getElementById('av-phone').value.trim(),
+    email:document.getElementById('av-email').value.trim(),
+    website:document.getElementById('av-website').value.trim(),
+    instructions:document.getElementById('av-instructions').value.trim()
+  };
+  vendors.push(v);
   await sheetWrite('addVendor',{vendor:v});
-  document.getElementById('av-name').value='';document.getElementById('av-emoji').value='';
+  ['av-name','av-emoji','av-phone','av-email','av-website','av-instructions'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
   avDaySelections=[];renderAvDays();renderVendorTable();renderDash(activeDay);showToast('✅ Vendor added!');
 }
+let editVendorId=null;
+let evDaySelections=[];
+
+function openEditVendorModal(vid){
+  const v=vendors.find(x=>x.id===vid);if(!v) return;
+  editVendorId=vid;
+  document.getElementById('ev-name').value=v.name||'';
+  document.getElementById('ev-emoji').value=v.emoji||'';
+  document.getElementById('ev-phone').value=v.phone||'';
+  document.getElementById('ev-email').value=v.email||'';
+  document.getElementById('ev-website').value=v.website||'';
+  document.getElementById('ev-instructions').value=v.instructions||'';
+  evDaySelections=[...(v.days||[])];
+  renderEvDays();
+  document.getElementById('edit-vendor-modal').style.display='flex';
+}
+
+function closeEditVendorModal(){
+  document.getElementById('edit-vendor-modal').style.display='none';
+  editVendorId=null;
+}
+
+function renderEvDays(){
+  const days=[...WEEKDAYS,'1st of month'];
+  document.getElementById('ev-days').innerHTML=days.map(d=>`
+    <span class="chip${evDaySelections.includes(d)?' active-chip':''}" onclick="toggleEvDay('${d}')">${d==='1st of month'?'1st':d.slice(0,3)}</span>`).join('');
+}
+
+function toggleEvDay(d){
+  evDaySelections=evDaySelections.includes(d)?evDaySelections.filter(x=>x!==d):[...evDaySelections,d];
+  renderEvDays();
+}
+
+async function saveEditVendor(){
+  const v=vendors.find(x=>x.id===editVendorId);if(!v) return;
+  const name=document.getElementById('ev-name').value.trim();
+  if(!name){alert('Vendor name required.');return;}
+  if(!evDaySelections.length){alert('Select at least one day.');return;}
+  v.name=name;
+  v.emoji=document.getElementById('ev-emoji').value.trim()||'📦';
+  v.days=[...evDaySelections];
+  v.phone=document.getElementById('ev-phone').value.trim();
+  v.email=document.getElementById('ev-email').value.trim();
+  v.website=document.getElementById('ev-website').value.trim();
+  v.instructions=document.getElementById('ev-instructions').value.trim();
+  await sheetWrite('updateVendor',{vendor:v});
+  closeEditVendorModal();
+  renderVendorTable();renderDash(activeDay);
+  showToast('✅ Vendor updated!');
+}
+
 async function deleteVendor(vid){
   if(!confirm('Remove vendor?')) return;
   vendors=vendors.filter(v=>v.id!==vid);await sheetWrite('deleteVendor',{id:vid});renderVendorTable();renderDash(activeDay);
@@ -1798,6 +1896,7 @@ document.addEventListener('click',e=>{
     if(sug&&wrap&&!wrap.contains(e.target)&&!sug.contains(e.target)) sug.style.display='none';
   });
   if(e.target===document.getElementById('edit-modal')) closeEditModal();
+  if(e.target===document.getElementById('edit-vendor-modal')) closeEditVendorModal();
 
 });
 
