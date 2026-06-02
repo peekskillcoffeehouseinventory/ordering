@@ -787,10 +787,18 @@ let syncInterval = null;
 
 function startCountSync(){
   stopCountSync();
+  let lastAutoSave = Date.now();
   syncInterval = setInterval(async()=>{
-    if(activeVendor){
-      const countData = vendorItems(activeVendor).reduce((acc,i)=>{acc[i.id]=i.counts;return acc;},{});
-      await sheetWrite('syncCounts',{vendor:activeVendor, counts:countData});
+    if(!activeVendor) return;
+    // Sync live counts every 30s
+    const countData = vendorItems(activeVendor).reduce((acc,i)=>{acc[i.id]=i.counts;return acc;},{});
+    await sheetWrite('syncCounts',{vendor:activeVendor, counts:countData});
+    // Auto-save every 2 minutes if there are session counts
+    const mySession = sessionCounts[activeVendor]||{};
+    if(Object.keys(mySession).length && Date.now()-lastAutoSave >= 120000){
+      lastAutoSave = Date.now();
+      await confirmSave();
+      showToast('✅ Auto-saved!');
     }
   }, 30000);
 }
@@ -962,11 +970,24 @@ async function confirmSave(){
     renderDash(activeDay);
   }
 }
-function clearCounts(){
-  if(!confirm('Clear all counts for '+activeVendor+'?')) return;
+async function clearCounts(){
+  if(!confirm('⚠️ Reset ALL counts for '+activeVendor+'?\n\nThis will clear counts for EVERYONE on all devices and cannot be undone.')) return;
+  // Clear local counts and session
   vendorItems(activeVendor).forEach(i=>i.counts={});
   if(sessionCounts[activeVendor]) delete sessionCounts[activeVendor];
+  // Clear from Sheet — save a blank entry so other devices see the reset
+  const now = new Date();
+  const entry = {
+    id:'h'+Date.now(), date:now.toISOString(),
+    vendor:activeVendor, teamLead:(userProfile?userProfile.name:'Reset'), day:activeDay,
+    counts:{}
+  };
+  // Remove today's existing entry from local history
+  history = history.filter(h=>!(h.vendor===activeVendor && new Date(h.date).toDateString()===now.toDateString()));
+  history.unshift(entry);
+  await sheetWrite('saveCount',{entry});
   renderCountView();
+  showToast('🔄 Counts reset for '+activeVendor);
 }
 
 // ─── ORDER / PRINT VIEW ───────────────────────────────────────────────────
@@ -1062,7 +1083,7 @@ function renderOrderView(){
         ${thumb}
         <span style="font-weight:500">${dispName}</span>
         <span style="color:#aaa">${item.orderUom}</span>
-        <span style="text-align:center;font-weight:700">${qty}</span></div>`;
+        <span style="text-align:center;font-weight:700;color:#dc2626">${qty}</span></div>`;
     });
     html+=`</div>`;
     document.getElementById('ov-body').innerHTML=html;
