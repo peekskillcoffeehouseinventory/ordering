@@ -1102,7 +1102,7 @@ function renderHistory(){
   let html='';
   Object.keys(weeks).sort().reverse().forEach(wk=>{
     const entries=weeks[wk];
-    const label='Week of '+new Date(wk).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    const label='Week of '+new Date(wk+'T00:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
     html+=`<div class="hist-week"><div class="hist-week-hdr" onclick="toggleWeek('${wk}')"><span>${label}</span><span style="font-size:12px;color:#aaa">${entries.length} count${entries.length>1?'s':''} ▾</span></div>
       <div class="hist-week-body" id="wk-${wk}">`;
     entries.forEach(h=>{
