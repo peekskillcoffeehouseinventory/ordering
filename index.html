@@ -1096,8 +1096,8 @@ function renderEventsList(){
       +(e.notes?'<div style="font-size:12px;color:#666;margin-top:3px">'+e.notes+'</div>':'')
       +'</div>'
       +'<div style="display:flex;gap:4px;flex-shrink:0">'
-      +'<button class="edit-btn" onclick="openEditEventModal(\"'+e.id+'\")">Edit</button>'
-      +'<button class="del-btn" onclick="deleteEvent(\"'+e.id+'\")">✕</button>'
+      +'<button class="edit-btn" data-eid="'+e.id+'" onclick="openEditEventModal(this.dataset.eid)">Edit</button>'
+      +'<button class="del-btn" data-eid="'+e.id+'" onclick="deleteEvent(this.dataset.eid)">✕</button>'
       +'</div></div></div>';
   }).join('');
 }
