@@ -726,19 +726,21 @@ async function loadAllData(){
   }, 3000);
 
   try{
-    const[vRows,lRows,iRows,hRows] = await withTimeout(
+    const[vRows,lRows,iRows,hRows,eRows] = await withTimeout(
       Promise.all([
         sheetRead('Vendors'),
         sheetRead('Locations'),
         sheetRead('Items'),
-        sheetRead('History')
+        sheetRead('History'),
+        sheetRead('Events').catch(()=>[])
       ]),
       5000
     );
     clearTimeout(skipTimer);
     if(loadAborted) return;
 
-    vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[]}));
+    vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||''}));
+    events = (eRows||[]).map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
     locations = lRows.map(r=>r.name).filter(Boolean);
     const rawItems=iRows.map(r=>({
       id:parseInt(r.id)||nextId++,
@@ -828,7 +830,14 @@ function goBack(){
   stopCountSync();
   const map={order:'count','hist-detail':'history',count:'dash',history:'dash',mgr:'dash',inventory:'dash'};
   const dest=map[prevView]||'dash';
-  showView(dest);if(dest==='dash') renderDash(activeDay);
+  showView(dest);
+  if(dest==='dash'){
+    // Silently refresh events from Sheet
+    sheetRead('Events').catch(()=>[]).then(eRows=>{
+      if(eRows&&eRows.length) events=eRows.map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
+      renderDash(activeDay);
+    });
+  }
 }
 
 // ─── ROLE ─────────────────────────────────────────────────────────────────
@@ -877,7 +886,7 @@ function renderDash(day){
     vlist.forEach(v=>{
       const vi=vendorItems(v.name);const counted=vi.filter(i=>totalCount(i)!==null).length;
       const status=counted===0?'pending':counted<vi.length?'partial':'done';
-      html+='<div class="vendor-card" onclick="openVendor(\"'+v.name.replace(/"/g,'&quot;')+'\")"><div class="v-dot '+status+'"></div><div class="v-icon '+status+'">'+v.emoji+'</div><h3>'+v.name+'</h3><p>'+(vi.length?counted+'/'+vi.length+' counted':'No items yet')+'</p></div>';
+      html+='<div class="vendor-card" data-vname="'+v.name.replace(/"/g,'&quot;')+'" onclick="openVendorFromCard(this)"><div class="v-dot '+status+'"></div><div class="v-icon '+status+'">'+v.emoji+'</div><h3>'+v.name+'</h3><p>'+(vi.length?counted+'/'+vi.length+' counted':'No items yet')+'</p></div>';
     });
     html+='</div>';
   }
@@ -1064,7 +1073,8 @@ function renderEventsList(){
   if(!el) return;
   if(!events.length){el.innerHTML='<div class="empty-msg">No events yet.</div>';return;}
   const now = localDateStr();
-  const sorted = [...events].sort((a,b)=>(a.date||'9').localeCompare(b.date||'9'));
+  const now2 = localDateStr();
+  const sorted = [...events].filter(e=>e.repeat&&e.repeat!=='none'||e.date>=now2).sort((a,b)=>(a.date||'9').localeCompare(b.date||'9'));
   el.innerHTML = sorted.map(e=>{
     const audienceLabel = e.audience==='both'?'Opening + Closing':e.audience==='opening'?'Opening Lead':'Closing Lead';
     let scheduleStr = '';
@@ -1118,6 +1128,9 @@ function stopCountSync(){
   if(syncInterval){ clearInterval(syncInterval); syncInterval=null; }
 }
 
+function openVendorFromCard(el){
+  openVendor(el.dataset.vname);
+}
 async function openVendor(vname){
   activeVendor=vname;document.getElementById('cv-title').textContent=vname;
   document.getElementById('cv-meta').textContent=activeDay+' count';
