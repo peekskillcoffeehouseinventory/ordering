@@ -49,6 +49,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dash-hdr p{font-size:13px;color:#888;margin-top:2px}
 .vendor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
 .vendor-card{background:#fff;border:1px solid #e8e8e3;border-radius:12px;padding:16px 12px;cursor:pointer;transition:all .15s;position:relative}
+.note-card{background:#fff;border:1px solid #e8e8e3;border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.note-card-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:8px}
+.note-item{padding:8px 10px;background:#f9f9f7;border-radius:8px;margin-bottom:6px;font-size:13px}
+.note-item-name{font-weight:600;margin-bottom:2px}
+.note-item-detail{font-size:12px;color:#888}
+.note-empty{font-size:13px;color:#ccc;font-style:italic}
 .vendor-card:hover{border-color:#aaa;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .v-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:22px}
 .v-icon.pending{background:#EFF6FF}.v-icon.partial{background:#FFFBEB}.v-icon.done{background:#F0FDF4}
@@ -201,6 +207,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="color-picker" style="display:flex;flex-wrap:wrap;gap:8px"></div>
     </div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="saveProfile()">Save profile</button>
+  </div>
+</div>
+
+<!-- Edit Event Modal -->
+<div class="modal-overlay" id="edit-event-modal" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <h3>Edit Event <button class="modal-close" onclick="closeEditEventModal()">×</button></h3>
+    <div class="form-2">
+      <div class="fi"><label>Event name</label><input id="ee-name" placeholder="Event name"></div>
+      <div class="fi"><label>Date</label><input id="ee-date" type="date"></div>
+    </div>
+    <div class="fi"><label>Who should see this?</label>
+      <div class="toggle-wrap" style="margin-top:4px">
+        <button class="toggle-opt active" id="ee-tog-both" onclick="setEditEventAudience('both')">Both</button>
+        <button class="toggle-opt" id="ee-tog-open" onclick="setEditEventAudience('opening')">Opening Lead</button>
+        <button class="toggle-opt" id="ee-tog-close" onclick="setEditEventAudience('closing')">Closing Lead</button>
+      </div>
+    </div>
+    <div class="fi"><label>Repeat</label>
+      <div class="toggle-wrap" style="margin-top:4px;flex-wrap:wrap;gap:4px">
+        <button class="toggle-opt active" id="ee-rep-none" onclick="setEditEventRepeat('none')">None</button>
+        <button class="toggle-opt" id="ee-rep-weekly" onclick="setEditEventRepeat('weekly')">Weekly</button>
+        <button class="toggle-opt" id="ee-rep-monthly" onclick="setEditEventRepeat('monthly')">Monthly</button>
+        <button class="toggle-opt" id="ee-rep-lastday" onclick="setEditEventRepeat('lastday')">Last day of month</button>
+      </div>
+    </div>
+    <div id="ee-weekly-opts" style="display:none" class="fi">
+      <label>Repeat on</label>
+      <div class="day-chip-wrap" id="ee-rep-days"></div>
+    </div>
+    <div id="ee-monthly-opts" style="display:none" class="fi">
+      <label>Day of month</label>
+      <input id="ee-rep-date" type="number" min="1" max="31" placeholder="e.g. 15" style="width:80px">
+    </div>
+    <div class="fi"><label>Additional notes</label>
+      <textarea id="ee-notes" style="width:100%;padding:8px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;min-height:60px"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="saveEditEvent()" style="flex:1">Save</button>
+      <button class="btn" onclick="closeEditEventModal()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -399,6 +446,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button class="tab active" onclick="mgrTab('items')" id="mtab-items">Items</button>
         <button class="tab" onclick="mgrTab('vendors')" id="mtab-vendors">Vendors</button>
         <button class="tab" onclick="mgrTab('locations')" id="mtab-locations">Locations</button>
+        <button class="tab" onclick="mgrTab('events')" id="mtab-events">Events</button>
       </div>
       <div id="mgr-items">
         <div class="mgr-card">
@@ -505,6 +553,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div class="mgr-card"><h3>📍 All locations</h3><div id="loc-list"></div></div>
       </div>
+
+      <div id="mgr-events" style="display:none">
+        <div class="mgr-card">
+          <h3>➕ Add event / note</h3>
+          <div class="form-2">
+            <div class="fi"><label>Event or note name</label><input id="ae-name" placeholder="e.g. Father's Day Brunch"></div>
+            <div class="fi"><label>Date</label><input id="ae-date" type="date"></div>
+          </div>
+          <div class="fi"><label>Who should see this?</label>
+            <div class="toggle-wrap" style="margin-top:4px">
+              <button class="toggle-opt active" id="ae-tog-both" onclick="setEventAudience('both')">Both</button>
+              <button class="toggle-opt" id="ae-tog-open" onclick="setEventAudience('opening')">Opening Lead</button>
+              <button class="toggle-opt" id="ae-tog-close" onclick="setEventAudience('closing')">Closing Lead</button>
+            </div>
+          </div>
+          <div class="fi"><label>Additional notes <span style="font-weight:400;color:#aaa">(optional)</span></label>
+            <textarea id="ae-notes" placeholder="e.g. Double par on OJ and pastries. Event starts at 10am." style="width:100%;padding:8px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;min-height:60px"></textarea>
+          </div>
+          <div class="fi"><label>Repeat</label>
+            <div class="toggle-wrap" style="margin-top:4px;flex-wrap:wrap;gap:4px">
+              <button class="toggle-opt active" id="ae-rep-none" onclick="setEventRepeat('none')">None</button>
+              <button class="toggle-opt" id="ae-rep-weekly" onclick="setEventRepeat('weekly')">Weekly</button>
+              <button class="toggle-opt" id="ae-rep-monthly" onclick="setEventRepeat('monthly')">Monthly</button>
+              <button class="toggle-opt" id="ae-rep-lastday" onclick="setEventRepeat('lastday')">Last day of month</button>
+            </div>
+          </div>
+          <div id="ae-weekly-opts" style="display:none" class="fi">
+            <label>Repeat on</label>
+            <div class="day-chip-wrap" id="ae-rep-days"></div>
+          </div>
+          <div id="ae-monthly-opts" style="display:none" class="fi">
+            <label>Day of month</label>
+            <input id="ae-rep-date" type="number" min="1" max="31" placeholder="e.g. 15" style="width:80px">
+          </div>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="addEvent()">+ Add event</button>
+        </div>
+        <div class="mgr-card">
+          <h3>📅 Upcoming events</h3>
+          <div id="events-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -513,7 +602,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbzBcUBIhrK3k0s-S-kFPwaE293exjATQ2Ilhj1Ih5pdk84G949Acvo8cqEL8RSgvCSsoA/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbzqhqAceXdfYZzI8f3nGFE7ZNZ9P8NahycEEbaEsBHI7OMBwC36AhN9P91zzQHPzdSCQg/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -765,20 +854,242 @@ function switchDay(day){activeDay=day;renderDayNav();showView('dash');renderDash
 // ─── DASHBOARD ────────────────────────────────────────────────────────────
 function renderDash(day){
   const vlist=scheduleFor(day);const isToday=day===today();
-  let html='';
-  if(!vlist.length){html=`<div class="no-counts"><div style="font-size:40px;margin-bottom:10px">☕</div><strong>No counts scheduled</strong><br><span style="font-size:13px;color:#aaa">No vendor orders for ${day}.</span></div>`;}
-  else{
-    html+=`<div class="dash-hdr"><h2>${isToday?'Today — ':''}${day}</h2><p>${vlist.length} vendor${vlist.length>1?'s':''} to count</p></div><div class="vendor-grid">`;
+
+  // Get events for this day
+  const todayEvts=getDayEvents(day);
+  const openEvts=todayEvts.filter(e=>e.audience==='both'||e.audience==='opening');
+  const closeEvts=todayEvts.filter(e=>e.audience==='both'||e.audience==='closing');
+
+  const buildNoteCard=(label,evts)=>{
+    const items=evts.length
+      ?evts.map(e=>'<div class="note-item"><div class="note-item-name">'+e.name+'</div>'+(e.notes?'<div class="note-item-detail">'+e.notes+'</div>':'')+'</div>').join('')
+      :'<div class="note-empty">No notes for today</div>';
+    return '<div class="note-card"><div class="note-card-hdr">'+label+'</div>'+items+'</div>';
+  };
+
+  let html=buildNoteCard('🌅 Opening Lead Notes',openEvts);
+  html+=buildNoteCard('🌆 Closing Lead Notes',closeEvts);
+
+  if(!vlist.length){
+    html+='<div class="no-counts"><div style="font-size:40px;margin-bottom:10px">☕</div><strong>No counts scheduled</strong><br><span style="font-size:13px;color:#aaa">No vendor orders for '+day+'.</span></div>';
+  } else {
+    html+='<div class="dash-hdr"><h2>'+(isToday?'Today — ':'')+day+'</h2><p>'+vlist.length+' vendor'+(vlist.length>1?'s':'')+' to count</p></div><div class="vendor-grid">';
     vlist.forEach(v=>{
       const vi=vendorItems(v.name);const counted=vi.filter(i=>totalCount(i)!==null).length;
       const status=counted===0?'pending':counted<vi.length?'partial':'done';
-      html+=`<div class="vendor-card" onclick="openVendor('${v.name.replace(/'/g,"\\'")}')">
-        <div class="v-dot ${status}"></div><div class="v-icon ${status}">${v.emoji}</div>
-        <h3>${v.name}</h3><p>${vi.length?counted+'/'+vi.length+' counted':'No items yet'}</p></div>`;
+      html+='<div class="vendor-card" onclick="openVendor(\"'+v.name.replace(/"/g,'&quot;')+'\")"><div class="v-dot '+status+'"></div><div class="v-icon '+status+'">'+v.emoji+'</div><h3>'+v.name+'</h3><p>'+(vi.length?counted+'/'+vi.length+' counted':'No items yet')+'</p></div>';
     });
-    html+=`</div>`;
+    html+='</div>';
   }
   document.getElementById('view-dash').innerHTML=html;
+}
+
+
+// ─── DATE HELPERS (always use local time, never UTC) ─────────────────────
+function localDateStr(date){
+  const d = date||new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function localDateFromStr(str){
+  // Parse YYYY-MM-DD as local time, not UTC
+  const [y,m,d]=str.split('-').map(Number);
+  return new Date(y,m-1,d);
+}
+function lastDayOfMonth(year,month){
+  return new Date(year,month,0).getDate(); // month is 1-based here
+}
+
+// ─── EVENTS ──────────────────────────────────────────────────────────────
+let events = [];
+let eventAudience = 'both';
+let eventRepeat = 'none';
+let eventRepeatDays = [];
+let editEventId = null;
+let editEventAudience = 'both';
+let editEventRepeat = 'none';
+let editEventRepeatDays = [];
+
+function setEventAudience(val){
+  eventAudience = val;
+  document.getElementById('ae-tog-both').className='toggle-opt'+(val==='both'?' active':'');
+  document.getElementById('ae-tog-open').className='toggle-opt'+(val==='opening'?' active':'');
+  document.getElementById('ae-tog-close').className='toggle-opt'+(val==='closing'?' active':'');
+}
+
+function setEditEventAudience(val){
+  editEventAudience = val;
+  document.getElementById('ee-tog-both').className='toggle-opt'+(val==='both'?' active':'');
+  document.getElementById('ee-tog-open').className='toggle-opt'+(val==='opening'?' active':'');
+  document.getElementById('ee-tog-close').className='toggle-opt'+(val==='closing'?' active':'');
+}
+
+function setEventRepeat(val){
+  eventRepeat = val;
+  ['none','weekly','monthly','lastday'].forEach(k=>{
+    document.getElementById('ae-rep-'+k).className='toggle-opt'+(k===val?' active':'');
+  });
+  document.getElementById('ae-weekly-opts').style.display=val==='weekly'?'block':'none';
+  document.getElementById('ae-monthly-opts').style.display=val==='monthly'?'block':'none';
+  if(val==='weekly') renderRepeatDays('ae-rep-days', eventRepeatDays, 'add');
+}
+
+function setEditEventRepeat(val){
+  editEventRepeat = val;
+  ['none','weekly','monthly','lastday'].forEach(k=>{
+    document.getElementById('ee-rep-'+k).className='toggle-opt'+(k===val?' active':'');
+  });
+  document.getElementById('ee-weekly-opts').style.display=val==='weekly'?'block':'none';
+  document.getElementById('ee-monthly-opts').style.display=val==='monthly'?'block':'none';
+  if(val==='weekly') renderRepeatDays('ee-rep-days', editEventRepeatDays, 'edit');
+}
+
+function renderRepeatDays(containerId, selectedDays, prefix){
+  const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  document.getElementById(containerId).innerHTML=days.map(d=>
+    '<span class="chip'+(selectedDays.includes(d)?' active-chip':'')+'" onclick="toggleRepeatDay(\"'+d+'\",\"'+prefix+'\")">'
+    +d.slice(0,3)+'</span>').join('');
+}
+
+function toggleRepeatDay(day, prefix){
+  if(prefix==='add'){
+    eventRepeatDays = eventRepeatDays.includes(day)?eventRepeatDays.filter(d=>d!==day):[...eventRepeatDays,day];
+    renderRepeatDays('ae-rep-days', eventRepeatDays, 'add');
+  } else {
+    editEventRepeatDays = editEventRepeatDays.includes(day)?editEventRepeatDays.filter(d=>d!==day):[...editEventRepeatDays,day];
+    renderRepeatDays('ee-rep-days', editEventRepeatDays, 'edit');
+  }
+}
+
+function openEditEventModal(eid){
+  const e = events.find(x=>x.id===eid); if(!e) return;
+  editEventId = eid;
+  document.getElementById('ee-name').value = e.name||'';
+  document.getElementById('ee-date').value = e.date||'';
+  document.getElementById('ee-notes').value = e.notes||'';
+  editEventAudience = e.audience||'both';
+  setEditEventAudience(editEventAudience);
+  editEventRepeat = e.repeat||'none';
+  editEventRepeatDays = e.repeatDays||[];
+  setEditEventRepeat(editEventRepeat);
+  if(editEventRepeat==='monthly') document.getElementById('ee-rep-date').value=e.repeatDate||'';
+  document.getElementById('edit-event-modal').style.display='flex';
+}
+
+function closeEditEventModal(){
+  document.getElementById('edit-event-modal').style.display='none';
+  editEventId=null;
+}
+
+async function saveEditEvent(){
+  const e = events.find(x=>x.id===editEventId); if(!e) return;
+  const name = document.getElementById('ee-name').value.trim();
+  if(!name){alert('Event name required.');return;}
+  e.name = name;
+  e.date = document.getElementById('ee-date').value;
+  e.notes = document.getElementById('ee-notes').value.trim();
+  e.audience = editEventAudience;
+  e.repeat = editEventRepeat;
+  e.repeatDays = editEventRepeat==='weekly'?[...editEventRepeatDays]:[];
+  e.repeatDate = editEventRepeat==='monthly'?document.getElementById('ee-rep-date').value:'';
+  await sheetWrite('updateEvent',{event:e});
+  closeEditEventModal();
+  renderEventsList();
+  renderDash(activeDay);
+  showToast('Event updated!');
+}
+
+function getDayEvents(day){
+  const now = new Date();
+  const dayIdx = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
+  const todayDayIdx = (now.getDay()+6)%7;
+  const diff = dayIdx - todayDayIdx;
+  const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()+diff);
+  const targetStr = localDateStr(targetDate);
+  const targetDay = targetDate.getDay(); // 0=Sun,1=Mon...
+  const targetDayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][targetDay];
+  const targetDateNum = targetDate.getDate();
+  const isLastDay = targetDateNum === lastDayOfMonth(targetDate.getFullYear(), targetDate.getMonth()+1);
+
+  return events.filter(e=>{
+    // One-time event on exact date
+    if((!e.repeat||e.repeat==='none') && e.date===targetStr) return true;
+    // Weekly repeat — check if target day matches any of the repeat days
+    if(e.repeat==='weekly' && e.repeatDays && e.repeatDays.includes(targetDayName)) return true;
+    // Monthly repeat on specific date
+    if(e.repeat==='monthly' && e.repeatDate && parseInt(e.repeatDate)===targetDateNum) return true;
+    // Last day of month
+    if(e.repeat==='lastday' && isLastDay) return true;
+    return false;
+  });
+}
+
+async function addEvent(){
+  const name = document.getElementById('ae-name').value.trim();
+  const date = document.getElementById('ae-date').value;
+  const notes = document.getElementById('ae-notes').value.trim();
+  if(!name){alert('Event name required.');return;}
+  if(eventRepeat==='none'&&!date){alert('Date required for one-time events.');return;}
+  if(eventRepeat==='weekly'&&!eventRepeatDays.length){alert('Select at least one day for weekly repeat.');return;}
+  if(eventRepeat==='monthly'&&!document.getElementById('ae-rep-date').value){alert('Enter a day of month for monthly repeat.');return;}
+  const evt = {
+    id:'e'+Date.now(), name, date, audience:eventAudience, notes,
+    repeat:eventRepeat,
+    repeatDays:eventRepeat==='weekly'?[...eventRepeatDays]:[],
+    repeatDate:eventRepeat==='monthly'?document.getElementById('ae-rep-date').value:''
+  };
+  events.push(evt);
+  await sheetWrite('addEvent',{event:evt});
+  document.getElementById('ae-name').value='';
+  document.getElementById('ae-date').value='';
+  document.getElementById('ae-notes').value='';
+  document.getElementById('ae-rep-date').value='';
+  eventAudience='both'; setEventAudience('both');
+  eventRepeat='none'; setEventRepeat('none');
+  eventRepeatDays=[];
+  renderEventsList();
+  renderDash(activeDay);
+  showToast('Event added!');
+}
+
+async function deleteEvent(eid){
+  if(!confirm('Delete this event?')) return;
+  events = events.filter(e=>e.id!==eid);
+  await sheetWrite('deleteEvent',{id:eid});
+  renderEventsList();
+  renderDash(activeDay);
+}
+
+function renderEventsList(){
+  const el = document.getElementById('events-list');
+  if(!el) return;
+  if(!events.length){el.innerHTML='<div class="empty-msg">No events yet.</div>';return;}
+  const now = localDateStr();
+  const sorted = [...events].sort((a,b)=>(a.date||'9').localeCompare(b.date||'9'));
+  el.innerHTML = sorted.map(e=>{
+    const audienceLabel = e.audience==='both'?'Opening + Closing':e.audience==='opening'?'Opening Lead':'Closing Lead';
+    let scheduleStr = '';
+    if(!e.repeat||e.repeat==='none'){
+      const d = localDateFromStr(e.date);
+      scheduleStr = d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    } else if(e.repeat==='weekly'){
+      scheduleStr = 'Every '+( e.repeatDays&&e.repeatDays.length?e.repeatDays.join(', '):'—');
+    } else if(e.repeat==='monthly'){
+      scheduleStr = 'Every month on the '+e.repeatDate+(e.repeatDate==='1'?'st':e.repeatDate==='2'?'nd':e.repeatDate==='3'?'rd':'th');
+    } else if(e.repeat==='lastday'){
+      scheduleStr = 'Last day of every month';
+    }
+    const isPast = (!e.repeat||e.repeat==='none') && e.date < now;
+    return '<div style="padding:10px 0;border-bottom:1px solid #f0f0eb;'+(isPast?'opacity:0.4':'')+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'
+      +'<div style="flex:1"><div style="font-weight:600;font-size:13px">'+e.name+'</div>'
+      +'<div style="font-size:12px;color:#888;margin-top:2px">'+scheduleStr+' · '+audienceLabel+'</div>'
+      +(e.notes?'<div style="font-size:12px;color:#666;margin-top:3px">'+e.notes+'</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:4px;flex-shrink:0">'
+      +'<button class="edit-btn" onclick="openEditEventModal(\"'+e.id+'\")">Edit</button>'
+      +'<button class="del-btn" onclick="deleteEvent(\"'+e.id+'\")">✕</button>'
+      +'</div></div></div>';
+  }).join('');
 }
 
 // ─── COUNT VIEW ───────────────────────────────────────────────────────────
@@ -935,7 +1246,7 @@ async function confirmSave(){
   });
 
   // Additive: merge with existing today entry, preserving each person's color
-  const existingIdx = history.findIndex(h=>h.vendor===activeVendor && new Date(h.date).toDateString()===now.toDateString() && h.day===activeDay);
+  const existingIdx = history.findIndex(h=>h.vendor===activeVendor && localDateStr(new Date(h.date))===localDateStr(now) && h.day===activeDay);
   let entry;
   if(existingIdx>=0){
     entry = history[existingIdx];
@@ -1095,8 +1406,8 @@ function renderHistory(){
   if(!history.length){document.getElementById('hist-body').innerHTML=`<div class="empty-msg">No saved counts yet.</div>`;return;}
   const weeks={};
   history.forEach(h=>{
-    const d=new Date(h.date);const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));
-    const wk=mon.toISOString().slice(0,10);
+    const d=new Date(h.date);const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);const mon=new Date(local);mon.setDate(local.getDate()-((local.getDay()+6)%7));
+    const wk=localDateStr(mon);
     if(!weeks[wk]) weeks[wk]=[];weeks[wk].push(h);
   });
   let html='';
@@ -1208,13 +1519,14 @@ function viewHistEntry(hid){
 
 // ─── MANAGER ──────────────────────────────────────────────────────────────
 function mgrTab(tab){
-  ['items','vendors','locations'].forEach(t=>{
+  ['items','vendors','locations','events'].forEach(t=>{
     document.getElementById('mgr-'+t).style.display=t===tab?'block':'none';
     document.getElementById('mtab-'+t).className='tab'+(t===tab?' active':'');
   });
   if(tab==='items') renderItemTable();
   if(tab==='vendors') renderVendorTable();
   if(tab==='locations') renderLocList();
+  if(tab==='events') renderEventsList();
 }
 function renderMgr(){
   const sel=document.getElementById('ai-vendor');
@@ -1347,10 +1659,11 @@ async function reloadAll(){
   const activeCounts={};
   items.forEach(i=>{ if(i.counts&&Object.keys(i.counts).length) activeCounts[i.id]=i.counts; });
   try{
-    const [vRows,lRows,iRows,hRows] = await withTimeout(
-      Promise.all([sheetRead('Vendors'),sheetRead('Locations'),sheetRead('Items'),sheetRead('History')]),
+    const [vRows,lRows,iRows,hRows,eRows] = await withTimeout(
+      Promise.all([sheetRead('Vendors'),sheetRead('Locations'),sheetRead('Items'),sheetRead('History'),sheetRead('Events').catch(()=>[])]),
       5000
     );
+    events = eRows.map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
     vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||''}));
     locations=lRows.map(r=>r.name).filter(Boolean);
     const rawItems=iRows.map(r=>({
@@ -1624,7 +1937,7 @@ async function openInventoryMode(){
   await reloadAll();
   // Restore saved inventory counts from history
   const now = new Date();
-  const thisMonth = now.toISOString().slice(0,7);
+  const thisMonth = localDateStr(now).slice(0,7);
   const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
   if(invEntry&&invEntry.counts){
     const myName = userProfile?userProfile.name:'';
@@ -1751,7 +2064,7 @@ async function saveInventoryCounts(){
   });
 
   // Check for existing inventory entry this month
-  const thisMonth = now.toISOString().slice(0,7);
+  const thisMonth = localDateStr(now).slice(0,7);
   const existingIdx = history.findIndex(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
   let entry;
   if(existingIdx>=0){
@@ -1783,7 +2096,7 @@ async function saveInventoryCounts(){
 
 function printInventorySummary(){
   const now = new Date();
-  const thisMonth = now.toISOString().slice(0,7);
+  const thisMonth = localDateStr(now).slice(0,7);
   const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
   if(invEntry){
     viewHistEntry(invEntry.id);
@@ -1875,13 +2188,13 @@ function updateGreeting(){
 // Midnight reset check
 function checkMidnightReset(){
   const lastDate = localStorage.getItem('last_count_date');
-  const today = new Date().toDateString();
+  const today = localDateStr();
   if(lastDate && lastDate !== today){
     // New day — clear all active counts
     items.forEach(i=>i.counts={});
     showToast('New day — counts have been reset');
   }
-  localStorage.setItem('last_count_date', today);
+  localStorage.setItem('last_count_date', localDateStr());
 }
 
 // ADD TO HOME SCREEN POPUP
@@ -1918,6 +2231,7 @@ document.addEventListener('click',e=>{
   });
   if(e.target===document.getElementById('edit-modal')) closeEditModal();
   if(e.target===document.getElementById('edit-vendor-modal')) closeEditVendorModal();
+  if(e.target===document.getElementById('edit-event-modal')) closeEditEventModal();
 
 });
 
