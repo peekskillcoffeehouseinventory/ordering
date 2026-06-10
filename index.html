@@ -818,11 +818,11 @@ async function seedDefaults(){
 }
 
 // ─── VIEWS ────────────────────────────────────────────────────────────────
-function showView(name){
+function showView(name, skipRender=false){
   prevView=document.querySelector('.view.active')?.id.replace('view-','')||'dash';
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  if(name==='order') renderOrderView();
+  if(name==='order' && !skipRender) renderOrderView();
   if(name==='history') renderHistory();
   if(name==='mgr') renderMgr();
 }
@@ -1436,8 +1436,8 @@ function renderHistory(){
           <div class="hist-entry-meta">${h.day||''} · ${fmtDate(h.date)} · ${h.teamLead}</div>
         </div>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-sm" data-hid="${h.id}" onclick="viewHistEntry(this.dataset.hid)">View</button>
-          ${h.vendor!=='INVENTORY'?`<button class="btn btn-sm" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a" data-hid="${h.id}" onclick="viewHistOrder(this.dataset.hid)">Order</button>`:''}
+          <button class="btn btn-sm" data-hid="${h.id}" onclick="viewHistEntry(this.dataset.hid)">View Count</button>
+          ${h.vendor!=='INVENTORY'?`<button class="btn btn-sm" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a" data-hid="${h.id}" onclick="viewHistOrder(this.dataset.hid)">View Order</button>`:''}
         </div></div>`;
     });
     html+=`</div></div>`;
@@ -1491,10 +1491,6 @@ function viewHistOrder(hid){
   const instrLine=vInfo.instructions?`<div style="font-size:12px;color:#555;margin-top:6px;padding:6px 8px;background:#f9f9f7;border-left:3px solid #d0d0cb;border-radius:0 4px 4px 0"><strong>Ordering instructions:</strong> ${vInfo.instructions}</div>`:'';
 
   // Set up order view
-  document.getElementById('ov-title').textContent=vendor+' — Order List';
-  document.getElementById('ov-meta').textContent=dateStr+(tl?' · Team Lead: '+tl:'');
-  document.getElementById('print-hdr').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:2px">${vendor} — Order List</div><div style="font-size:12px;color:#666">${dateStr}${tl?' · Team Lead: '+tl:''}</div>${contactLine}${instrLine}`;
-
   // Render order body
   let html='';
   if(!orderItems.length){
@@ -1559,13 +1555,14 @@ function viewHistOrder(hid){
     html+=`</div>`;
   }
 
+  // Show order view first with skipRender=true so renderOrderView doesn't overwrite
+  showView('order', true);
+  document.getElementById('ov-title').textContent=vendor+' — Order List';
+  document.getElementById('ov-meta').textContent=dateStr+(tl?' · Team Lead: '+tl:'');
+  document.getElementById('print-hdr').innerHTML='<div style="font-size:18px;font-weight:700;margin-bottom:2px">'+vendor+' — Order List</div><div style="font-size:12px;color:#666">'+dateStr+(tl?' · Team Lead: '+tl:'')+'</div>'+contactLine+instrLine;
   document.getElementById('ov-body').innerHTML=html;
-
-  // Update back button to go to history
   const backBtn=document.getElementById('ov-back-btn');
-  if(backBtn) backBtn.onclick=()=>showView('hist-detail');
-
-  showView('order');
+  if(backBtn){ backBtn.textContent='← Back to history'; backBtn.onclick=()=>showView('hist-detail'); }
 }
 
 function viewHistEntry(hid){
