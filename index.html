@@ -1345,8 +1345,8 @@ function renderOrderView(){
     let rows='';
     for(let i=0;i<maxRows;i++){
       const L=leftCol[i]; const R=rightCol[i];
-      const lqty=L?calcOrderQty(L):null;
-      const rqty=R?calcOrderQty(R):null;
+      const lqty=L?orderQtys[String(L.id)]:null;
+      const rqty=R?orderQtys[String(R.id)]:null;
       const lname=L?(L.orderName||L.name):'';
       const rname=R?(R.orderName||R.name):'';
       const louom=L?L.orderUom:'';
@@ -1477,11 +1477,13 @@ function viewHistOrder(hid){
     console.log('viewHistOrder sample item:', vi[0].name, 'counts:', JSON.stringify(vi[0].counts), 'locations:', JSON.stringify(vi[0].locations), 'par:', vi[0].par, 'total:', totalCount(vi[0]), 'orderQty:', calcOrderQty(vi[0]));
   }
 
-  // Build order items — only those that needed ordering
-  const orderItems = vi.filter(i=>calcOrderQty(i)>0).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+  // Build order items and STORE quantities before restoring counts
+  const orderQtys = {};
+  vi.forEach(i=>{ orderQtys[String(i.id)]=calcOrderQty(i); });
+  const orderItems = vi.filter(i=>orderQtys[String(i.id)]>0).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
   console.log('viewHistOrder orderItems:', orderItems.length, 'of', vi.length);
 
-  // Restore original counts
+  // Restore original counts NOW — qtys are saved in orderQtys
   vi.forEach(i=>{ i.counts=prevCounts[i.id]; });
 
   // Build contact/instructions header
@@ -1544,7 +1546,7 @@ function viewHistOrder(hid){
     html=`<div style="border:1px solid #e8e8e3;border-radius:10px;overflow:hidden">
       <div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#f5f5f0;border-bottom:1px solid #e8e8e3"><span></span><span>Item</span><span>Order UoM</span><span style="text-align:center">Qty</span></div>`;
     orderItems.forEach((item,idx)=>{
-      const qty=calcOrderQty(item);
+      const qty=orderQtys[String(item.id)];
       const dispName=item.orderName||item.name;
       const dispPhoto=item.orderPhoto||item.photo||photoCache['order_'+item.id]||photoCache[item.id]||null;
       const thumb=dispPhoto?`<img src="${dispPhoto}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #f0f0eb;flex-shrink:0">`:'<div style="width:32px;height:32px;border-radius:6px;background:#f5f5f0;border:1px solid #f0f0eb;flex-shrink:0"></div>';
