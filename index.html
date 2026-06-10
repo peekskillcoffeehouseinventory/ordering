@@ -1435,13 +1435,130 @@ function renderHistory(){
           <div style="font-weight:600">${h.vendor}</div>
           <div class="hist-entry-meta">${h.day||''} · ${fmtDate(h.date)} · ${h.teamLead}</div>
         </div>
-        <button class="btn btn-sm" onclick="viewHistEntry('${h.id}')">View</button></div>`;
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" data-hid="${h.id}" onclick="viewHistEntry(this.dataset.hid)">View</button>
+          ${h.vendor!=='INVENTORY'?`<button class="btn btn-sm" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a" data-hid="${h.id}" onclick="viewHistOrder(this.dataset.hid)">Order</button>`:''}
+        </div></div>`;
     });
     html+=`</div></div>`;
   });
   document.getElementById('hist-body').innerHTML=html;
 }
 function toggleWeek(wk){document.getElementById('wk-'+wk)?.classList.toggle('open');}
+function viewHistOrder(hid){
+  const entry = history.find(h=>h.id===hid);
+  if(!entry) return;
+  const vendor = entry.vendor;
+  const vInfo = vendors.find(v=>v.name===vendor)||{};
+  const dateStr = fmtDate(entry.date);
+  const tl = entry.teamLead;
+
+  // Restore counts from saved history entry into a temporary item snapshot
+  const vi = vendorItems(vendor);
+  const savedCounts = {};
+  if(entry.counts){
+    Object.entries(entry.counts).forEach(([id,data])=>{
+      const sc = (data.counts!==undefined&&data.savedBy!==undefined)?data.counts:data;
+      if(sc&&typeof sc==='object') savedCounts[id]=sc;
+    });
+  }
+
+  // Temporarily apply saved counts to items to calculate order qtys
+  const prevCounts = {};
+  vi.forEach(i=>{ prevCounts[i.id]=i.counts; i.counts=savedCounts[String(i.id)]||{}; });
+
+  // Build order items — only those that needed ordering
+  const orderItems = vi.filter(i=>calcOrderQty(i)>0).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+
+  // Restore original counts
+  vi.forEach(i=>{ i.counts=prevCounts[i.id]; });
+
+  // Build contact/instructions header
+  const contactParts=[];
+  if(vInfo.phone) contactParts.push('📞 '+vInfo.phone);
+  if(vInfo.email) contactParts.push('✉️ '+vInfo.email);
+  if(vInfo.website) contactParts.push('🌐 '+vInfo.website);
+  const contactLine=contactParts.length?`<div style="font-size:12px;color:#444;margin-top:4px">${contactParts.join(' · ')}</div>`:'';
+  const instrLine=vInfo.instructions?`<div style="font-size:12px;color:#555;margin-top:6px;padding:6px 8px;background:#f9f9f7;border-left:3px solid #d0d0cb;border-radius:0 4px 4px 0"><strong>Ordering instructions:</strong> ${vInfo.instructions}</div>`:'';
+
+  // Set up order view
+  document.getElementById('ov-title').textContent=vendor+' — Order List';
+  document.getElementById('ov-meta').textContent=dateStr+(tl?' · Team Lead: '+tl:'');
+  document.getElementById('print-hdr').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:2px">${vendor} — Order List</div><div style="font-size:12px;color:#666">${dateStr}${tl?' · Team Lead: '+tl:''}</div>${contactLine}${instrLine}`;
+
+  // Render order body
+  let html='';
+  if(!orderItems.length){
+    html='<div class="empty-msg" style="color:#16a34a">✅ Nothing to order — all items were at or above par.</div>';
+  } else if(vendor==='Restaurant Depot'){
+    // Two column RD layout
+    const half=Math.ceil(orderItems.length/2);
+    const leftCol=orderItems.slice(0,half);
+    const rightCol=orderItems.slice(half);
+    const maxRows=Math.max(leftCol.length,rightCol.length);
+    let rows='';
+    for(let i=0;i<maxRows;i++){
+      const L=leftCol[i]; const R=rightCol[i];
+      const lqty=L?calcOrderQty(L):null;
+      const rqty=R?calcOrderQty(R):null;
+      const lname=L?(L.orderName||L.name):'';
+      const rname=R?(R.orderName||R.name):'';
+      const lphoto=L?(L.orderPhoto||L.photo||photoCache['order_'+L.id]||photoCache[L.id]||null):null;
+      const rphoto=R?(R.orderPhoto||R.photo||photoCache['order_'+R.id]||photoCache[R.id]||null):null;
+      const lthumb=lphoto?`<img src="${lphoto}" style="width:28px;height:28px;object-fit:cover;border-radius:5px;border:1px solid #f0f0eb">`:'<div style="width:28px;height:28px;border-radius:5px;background:#f5f5f0;border:1px solid #f0f0eb"></div>';
+      const rthumb=rphoto?`<img src="${rphoto}" style="width:28px;height:28px;object-fit:cover;border-radius:5px;border:1px solid #f0f0eb">`:'<div style="width:28px;height:28px;border-radius:5px;background:#f5f5f0;border:1px solid #f0f0eb"></div>';
+      if(L&&L.sectionBreak&&i>0) rows+=`<tr><td colspan="9" style="padding:0;border-bottom:2px solid #1a1a1a"></td></tr>`;
+      rows+=`<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0f0eb">${L?lthumb:''}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;font-weight:500">${lname}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;text-align:center;font-weight:700;color:#dc2626">${L?(lqty||''):''}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;color:#888">${L?L.orderUom:''}</td>
+        <td style="padding:5px 8px;border-right:none;border-bottom:1px solid #f0f0eb;width:16px"></td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0f0eb">${R?rthumb:''}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;font-weight:500">${rname}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;text-align:center;font-weight:700;color:#dc2626">${R?(rqty||''):''}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f0eb;color:#888">${R?R.orderUom:''}</td>
+      </tr>`;
+    }
+    html=`<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#f5f5f0">
+        <th style="padding:6px 8px;width:32px"></th>
+        <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:#aaa;text-align:left;font-weight:700">Item</th>
+        <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:#aaa;text-align:center;font-weight:700">Qty</th>
+        <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:#aaa;text-align:left;font-weight:700">UoM</th>
+        <th style="padding:0;width:16px;background:#e8e8e3"></th>
+        <th style="padding:6px 8px;width:32px"></th>
+        <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:#aaa;text-align:left;font-weight:700">Item</th>
+        <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:#aaa;text-align:center;font-weight:700">Qty</th>
+        <th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:#aaa;text-align:left;font-weight:700">UoM</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  } else {
+    // Single column layout
+    html=`<div style="border:1px solid #e8e8e3;border-radius:10px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#f5f5f0;border-bottom:1px solid #e8e8e3"><span></span><span>Item</span><span>Order UoM</span><span style="text-align:center">Qty</span></div>`;
+    orderItems.forEach((item,idx)=>{
+      const qty=calcOrderQty(item);
+      const dispName=item.orderName||item.name;
+      const dispPhoto=item.orderPhoto||item.photo||photoCache['order_'+item.id]||photoCache[item.id]||null;
+      const thumb=dispPhoto?`<img src="${dispPhoto}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #f0f0eb;flex-shrink:0">`:'<div style="width:32px;height:32px;border-radius:6px;background:#f5f5f0;border:1px solid #f0f0eb;flex-shrink:0"></div>';
+      if(item.sectionBreak&&idx>0) html+=`<div style="height:2px;background:#1a1a1a"></div>`;
+      html+=`<div style="display:grid;grid-template-columns:40px 1fr 110px 70px;gap:8px;align-items:center;padding:9px 14px;border-top:1px solid #f0f0eb;font-size:13px;background:#fff">
+        ${thumb}<span style="font-weight:500">${dispName}</span>
+        <span style="color:#aaa">${item.orderUom}</span>
+        <span style="text-align:center;font-weight:700;color:#dc2626">${qty}</span></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  document.getElementById('ov-body').innerHTML=html;
+
+  // Update back button to go to history
+  const backBtn=document.getElementById('ov-back-btn');
+  if(backBtn) backBtn.onclick=()=>showView('hist-detail');
+
+  showView('order');
+}
+
 function viewHistEntry(hid){
   const entry=history.find(h=>h.id===hid);if(!entry) return;
   prevView=entry.vendor==='INVENTORY'?'inventory':'history';
