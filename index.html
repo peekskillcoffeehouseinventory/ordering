@@ -1472,8 +1472,10 @@ function viewHistOrder(hid){
     i.counts=savedCounts[String(i.id)]||{};
   });
 
-  // Debug: log first item counts
-  if(vi.length) console.log('viewHistOrder sample counts:', vi[0].name, JSON.stringify(vi[0].counts));
+  // Debug
+  if(vi.length){
+    console.log('viewHistOrder sample item:', vi[0].name, 'counts:', JSON.stringify(vi[0].counts), 'locations:', JSON.stringify(vi[0].locations), 'par:', vi[0].par, 'total:', totalCount(vi[0]), 'orderQty:', calcOrderQty(vi[0]));
+  }
 
   // Build order items — only those that needed ordering
   const orderItems = vi.filter(i=>calcOrderQty(i)>0).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
