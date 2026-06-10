@@ -1464,11 +1464,20 @@ function viewHistOrder(hid){
   }
 
   // Temporarily apply saved counts to items to calculate order qtys
+  // savedCounts values are already {loc:val} objects (extracted above)
   const prevCounts = {};
-  vi.forEach(i=>{ prevCounts[i.id]=i.counts; i.counts=savedCounts[String(i.id)]||{}; });
+  vi.forEach(i=>{
+    prevCounts[i.id]=i.counts;
+    // savedCounts[id] is already the flat {loc:val} object
+    i.counts=savedCounts[String(i.id)]||{};
+  });
+
+  // Debug: log first item counts
+  if(vi.length) console.log('viewHistOrder sample counts:', vi[0].name, JSON.stringify(vi[0].counts));
 
   // Build order items — only those that needed ordering
   const orderItems = vi.filter(i=>calcOrderQty(i)>0).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+  console.log('viewHistOrder orderItems:', orderItems.length, 'of', vi.length);
 
   // Restore original counts
   vi.forEach(i=>{ i.counts=prevCounts[i.id]; });
