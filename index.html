@@ -12,14 +12,22 @@
 <title>Ordering</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
-.app{max-width:700px;margin:0 auto;padding:16px}
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px 16px;background:#fff;border-radius:12px;border:1px solid #e8e8e3}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F0E8;color:#1a1a1a;min-height:100vh}
+.app{max-width:700px;margin:0 auto;padding:0 0 24px}
+/* ── Header ── */
+.pch-header{position:relative;width:100%;height:160px;overflow:hidden;margin-bottom:0}
+.pch-header img.pch-bg{width:100%;height:100%;object-fit:cover;display:block}
+.pch-header-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.pch-logo{height:56px;object-fit:contain}
+.pch-greeting{color:#fff;font-size:14px;font-weight:500;letter-spacing:.01em;text-align:center;opacity:.9}
+/* ── Nav bar (below header) ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#F5F0E8;border-bottom:1px solid #E2D9CC;margin-bottom:0}
 .topbar h1{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
-.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.topbar-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .today-lbl{font-size:12px;color:#888}
-.role-btn{font-size:12px;padding:6px 12px;border-radius:20px;border:1px solid #ddd;background:#f5f5f0;color:#555;cursor:pointer;font-weight:600}
-.role-btn.manager{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+/* Role / action buttons use teal */
+.role-btn{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid #C8BFB0;background:#EDE8DF;color:#555;cursor:pointer;font-weight:600}
+.role-btn.manager{background:#0891B2;color:#fff;border-color:#0891B2}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;margin-right:4px;transition:background .3s}
 .sync-dot.syncing{background:#f59e0b}
 .sync-dot.ok{background:#22c55e}
@@ -28,9 +36,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .day-nav{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
 .day-nav::-webkit-scrollbar{height:3px}
 .day-nav::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
-.day-pill{padding:6px 13px;font-size:13px;font-weight:500;border:1px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;color:#666;white-space:nowrap;transition:all .15s;flex-shrink:0}
-.day-pill.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
-.day-pill.today{border-color:#1a1a1a}
+.day-pill{padding:6px 13px;font-size:13px;font-weight:500;border:1px solid #C8BFB0;border-radius:20px;cursor:pointer;background:#EDE8DF;color:#666;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.day-pill.active{background:#0891B2;color:#fff;border-color:#0891B2}
+.day-pill.today{border-color:#0891B2}
 .view{display:none}.view.active{display:block}
 .back-btn{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#888;cursor:pointer;background:none;border:none;padding:0 0 14px;font-family:inherit}
 .back-btn:hover{color:#1a1a1a}
@@ -39,8 +47,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .view-meta{font-size:12px;color:#888;margin-top:3px}
 .btn{padding:8px 14px;font-size:13px;font-weight:500;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#fff;color:#1a1a1a;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
 .btn:hover{background:#f5f5f0;border-color:#aaa}
-.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
-.btn-primary:hover{background:#333}
+.btn-primary{background:#0891B2;color:#fff;border-color:#0891B2}
+.btn-primary:hover{background:#0779A0}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-warning{background:#f59e0b;color:#fff;border-color:#f59e0b}
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
@@ -48,8 +56,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dash-hdr h2{font-size:16px;font-weight:700}
 .dash-hdr p{font-size:13px;color:#888;margin-top:2px}
 .vendor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
-.vendor-card{background:#fff;border:1px solid #e8e8e3;border-radius:12px;padding:16px 12px;cursor:pointer;transition:all .15s;position:relative}
-.note-card{background:#fff;border:1px solid #e8e8e3;border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.vendor-card{background:#FFFDF9;border:1px solid #E2D9CC;border-radius:12px;padding:16px 12px;cursor:pointer;transition:all .15s;position:relative}
+.note-card{background:#FFFDF9;border:1px solid #E2D9CC;border-radius:12px;padding:14px 16px;margin-bottom:10px}
 .note-card-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:8px}
 .note-item{padding:8px 10px;background:#f9f9f7;border-radius:8px;margin-bottom:6px;font-size:13px}
 .note-item-name{font-weight:600;margin-bottom:2px}
@@ -62,14 +70,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vendor-card p{font-size:11px;color:#999}
 .v-dot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%}
 .v-dot.pending{background:#cbd5e1}.v-dot.partial{background:#f59e0b}.v-dot.done{background:#22c55e}
-.no-counts{text-align:center;padding:40px 16px;background:#fff;border-radius:12px;border:1px solid #e8e8e3;color:#888}
+.no-counts{text-align:center;padding:40px 16px;background:#FFFDF9;border-radius:12px;border:1px solid #E2D9CC;color:#888}
 .name-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #e8e8e3;margin-bottom:14px}
 .name-bar label{font-size:13px;color:#888;white-space:nowrap;font-weight:500}
 .name-bar input{flex:1;border:none;background:transparent;font-size:13px;color:#1a1a1a;outline:none;font-family:inherit}
 .loc-group{margin-bottom:14px}
-.loc-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;padding:8px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none}
-.col-hdr{display:grid;grid-template-columns:44px 1fr 76px 76px 66px;gap:6px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#fff;border:1px solid #e8e8e3;border-top:none;border-bottom:1px solid #f0f0eb}
-.item-row{display:grid;grid-template-columns:44px 1fr 76px 76px 66px;gap:6px;align-items:center;padding:10px 14px;border-bottom:1px solid #f0f0eb;background:#fff;border-left:1px solid #e8e8e3;border-right:1px solid #e8e8e3}
+.loc-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;padding:8px 14px;background:#EDE8DF;border-radius:10px 10px 0 0;border:1px solid #E2D9CC;border-bottom:none}
+.col-hdr{display:grid;grid-template-columns:44px 1fr 76px 76px 66px;gap:6px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#bbb;background:#EDE8DF;border:1px solid #E2D9CC;border-top:none;border-bottom:1px solid #EDE8DF}
+.item-row{display:grid;grid-template-columns:44px 1fr 76px 76px 66px;gap:6px;align-items:center;padding:10px 14px;border-bottom:1px solid #EDE8DF;background:#FFFDF9;border-left:1px solid #E2D9CC;border-right:1px solid #E2D9CC}
 .item-row:last-child{border-bottom:1px solid #e8e8e3;border-radius:0 0 10px 10px}
 .item-name{font-size:13px;font-weight:600;line-height:1.3}
 .item-uom{font-size:11px;color:#aaa;margin-top:1px}
@@ -89,7 +97,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .print-row.highlight{background:#fffbeb}
 .empty-msg{text-align:center;padding:36px;background:#fff;border-radius:12px;border:1px solid #e8e8e3;color:#aaa;font-size:13px}
 /* History */
-.hist-week{background:#fff;border:1px solid #e8e8e3;border-radius:12px;margin-bottom:10px;overflow:hidden}
+.hist-week{background:#FFFDF9;border:1px solid #E2D9CC;border-radius:12px;margin-bottom:10px;overflow:hidden}
 .hist-week-hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer;font-size:14px;font-weight:600}
 .hist-week-hdr:hover{background:#f9f9f7}
 .hist-week-body{display:none;border-top:1px solid #f0f0eb}
@@ -98,7 +106,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hist-entry:last-child{border-bottom:none}
 .hist-entry-meta{font-size:11px;color:#aaa;margin-top:2px}
 /* Manager */
-.mgr-card{background:#fff;border:1px solid #e8e8e3;border-radius:12px;padding:18px;margin-bottom:12px}
+.mgr-card{background:#FFFDF9;border:1px solid #E2D9CC;border-radius:12px;padding:18px;margin-bottom:12px}
 .mgr-card h3{font-size:14px;font-weight:700;margin-bottom:14px}
 .fi{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .fi label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa}
@@ -107,15 +115,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .form-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .form-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .form-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
-.tabs{display:flex;gap:4px;margin-bottom:16px;background:#f0f0eb;padding:4px;border-radius:10px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#E2D9CC;padding:4px;border-radius:10px}
 .tab{flex:1;padding:7px;font-size:12px;font-weight:600;border:none;background:transparent;color:#888;cursor:pointer;border-radius:7px;transition:all .15s}
-.tab.active{background:#fff;color:#1a1a1a;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tab.active{background:#fff;color:#0891B2;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .itbl{border:1px solid #e8e8e3;border-radius:10px;overflow:hidden;margin-top:4px}
-.itbl-hdr{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#f5f5f0;border-bottom:1px solid #e8e8e3}
+.itbl-hdr{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#EDE8DF;border-bottom:1px solid #E2D9CC}
 .itbl-row{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0eb;font-size:13px;background:#fff}
 .itbl-row:last-child{border-bottom:none}
 .vtbl{border:1px solid #e8e8e3;border-radius:10px;overflow:hidden;margin-top:4px}
-.vtbl-hdr{display:grid;grid-template-columns:32px 1fr 160px 80px 32px;gap:8px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#f5f5f0;border-bottom:1px solid #e8e8e3}
+.vtbl-hdr{display:grid;grid-template-columns:32px 1fr 160px 80px 32px;gap:8px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#EDE8DF;border-bottom:1px solid #E2D9CC}
 .vtbl-row{display:grid;grid-template-columns:32px 1fr 160px 80px 32px;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid #f0f0eb;font-size:13px;background:#fff}
 .vtbl-row:last-child{border-bottom:none}
 .loc-tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;background:#f0f0eb;color:#666;margin:1px}
@@ -162,13 +170,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   body{background:#fff}
   .no-print{display:none!important}
   .app{max-width:100%;padding:0}
-  .print-hdr{display:block!important;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #1a1a1a}
+  .print-hdr{display:block!important;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #0891B2}
   .print-two-col{border:1px solid #ccc}
   .print-row{font-size:11px;padding:5px 8px}
   .order-loc-grp{page-break-inside:avoid}
   /* Inventory print layout */
   #view-inventory .view-header,#view-inventory .back-btn,
-  #view-inventory .actions,.day-nav,.topbar,.no-print{display:none!important}
+  #view-inventory .actions,.day-nav,.topbar,.pch-header,.no-print{display:none!important}
   #view-inventory #inv-print-hdr{display:block!important;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #1a1a1a}
   .inv-print-cols{display:table;width:100%;border-collapse:collapse}
   .inv-print-col{display:table-cell;width:50%;vertical-align:top;padding-right:10px}
@@ -359,25 +367,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <div class="app">
-  <div class="topbar no-print">
-    <div>
-      <div style="font-size:17px;font-weight:700" id="greeting-text">📦 Ordering</div>
-      <div style="font-size:11px;color:#aaa;margin-top:1px" id="greeting-sub"></div>
+  <!-- Photo + Logo Header -->
+  <div class="pch-header no-print">
+    <img class="pch-bg" src="IMG_0755.jpeg" alt="Peekskill Coffee House">
+    <div class="pch-header-overlay">
+      <img class="pch-logo" src="Peekskill Coffee Logo White.png" alt="Peekskill Coffee">
+      <div class="pch-greeting" id="greeting-text"></div>
     </div>
+  </div>
+
+  <!-- Nav bar -->
+  <div class="topbar no-print">
+    <span><span class="sync-dot" id="sync-dot"></span><span class="sync-lbl" id="sync-lbl" style="font-size:11px;color:#aaa">Loading...</span>&nbsp;<span class="today-lbl" id="today-lbl"></span></span>
     <div class="topbar-right">
-      <span><span class="sync-dot" id="sync-dot"></span><span class="sync-lbl" id="sync-lbl">Loading...</span></span>
-      <span class="today-lbl" id="today-lbl"></span>
       <button class="btn btn-sm no-print" onclick="showView('history')">📋 History</button>
-      <button class="btn btn-sm no-print" onclick="openInventoryMode()" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a">📊 Inventory</button>
+      <button class="btn btn-sm no-print" onclick="openInventoryMode()" style="background:#0891B2;color:#fff;border-color:#0891B2">📊 Inventory</button>
       <button class="role-btn" id="role-btn" onclick="toggleRole()">Team Lead</button>
     </div>
   </div>
 
-  <div class="day-nav no-print" id="day-nav"></div>
+  <div class="day-nav no-print" id="day-nav" style="padding:12px 16px 4px"></div>
 
-  <div id="view-dash" class="view active"></div>
+  <div id="view-dash" class="view active" style="padding:0 16px"></div>
 
-  <div id="view-count" class="view">
+  <div id="view-count" class="view" style="padding:0 16px">
     <button class="back-btn no-print" onclick="goBack()">← Back</button>
     <div class="view-header">
       <div><h2 id="cv-title"></h2><div class="view-meta" id="cv-meta"></div></div>
@@ -392,7 +405,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
-  <div id="view-order" class="view">
+  <div id="view-order" class="view" style="padding:0 16px">
     <button class="back-btn no-print" id="ov-back-btn" onclick="showView('count')">← Back to count</button>
     <div class="print-hdr" id="print-hdr"></div>
     <div class="view-header">
@@ -402,13 +415,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="ov-body"></div>
   </div>
 
-  <div id="view-history" class="view">
+  <div id="view-history" class="view" style="padding:0 16px">
     <button class="back-btn no-print" onclick="goBack()">← Back</button>
     <div class="view-header"><h2>Count History</h2></div>
     <div id="hist-body"></div>
   </div>
 
-  <div id="view-hist-detail" class="view">
+  <div id="view-hist-detail" class="view" style="padding:0 16px">
     <button class="back-btn no-print" onclick="goBack()">← Back</button>
     <div class="print-hdr" id="print-hdr2"></div>
     <div class="view-header">
@@ -419,7 +432,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <!-- INVENTORY MODE -->
-  <div id="view-inventory" class="view">
+  <div id="view-inventory" class="view" style="padding:0 16px">
     <button class="back-btn no-print" onclick="goBack()">← Back</button>
     <div class="print-hdr" id="inv-print-hdr"></div>
     <div class="view-header">
@@ -434,7 +447,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
-  <div id="view-mgr" class="view">
+  <div id="view-mgr" class="view" style="padding:0 16px">
     <button class="back-btn no-print" onclick="goBack()">← Back</button>
     <div id="mgr-lock" class="lock-screen">
       <div style="font-size:36px;margin-bottom:10px">🔒</div>
