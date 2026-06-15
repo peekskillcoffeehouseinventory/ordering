@@ -843,7 +843,7 @@ function showView(name, skipRender=false){
 }
 function goBack(){
   stopCountSync();
-  const map={order:'hist-detail','hist-detail':'history',count:'dash',history:'dash',mgr:'dash',inventory:'dash'};
+  const map={'hist-detail':'history',count:'dash',history:'dash',mgr:'dash',inventory:'dash',order:orderViewFromHistory?'hist-detail':'count'};
   const dest=map[prevView]||'dash';
   showView(dest);
   if(dest==='dash'){
@@ -925,6 +925,7 @@ function lastDayOfMonth(year,month){
 
 // ─── EVENTS ──────────────────────────────────────────────────────────────
 let events = [];
+let orderViewFromHistory = false;
 let eventAudience = 'both';
 let eventRepeat = 'none';
 let eventRepeatDays = [];
@@ -1331,10 +1332,12 @@ async function clearCounts(){
 
 // ─── ORDER / PRINT VIEW ───────────────────────────────────────────────────
 function renderOrderView(){
+  orderViewFromHistory = false;
+  const backBtn = document.getElementById('ov-back-btn');
+  if(backBtn){ backBtn.textContent='← Back'; backBtn.onclick=null; }
   const now=new Date();
-  // Pull Team Lead name from most recent saved count for this vendor
-  const lastSave=history.find(h=>h.vendor===activeVendor);
-  const tl=lastSave?lastSave.teamLead:'';
+  // Use current user's name as team lead for live order
+  const tl=userProfile?userProfile.name:'';
   const dateStr=now.toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('ov-title').textContent=activeVendor+' — Order List';
   document.getElementById('ov-meta').textContent=dateStr+(tl?' · '+tl:'');
@@ -1360,8 +1363,8 @@ function renderOrderView(){
     let rows='';
     for(let i=0;i<maxRows;i++){
       const L=leftCol[i]; const R=rightCol[i];
-      const lqty=L?orderQtys[String(L.id)]:null;
-      const rqty=R?orderQtys[String(R.id)]:null;
+      const lqty=L?calcOrderQty(L):null;
+      const rqty=R?calcOrderQty(R):null;
       const lname=L?(L.orderName||L.name):'';
       const rname=R?(R.orderName||R.name):'';
       const louom=L?L.orderUom:'';
@@ -1575,6 +1578,7 @@ function viewHistOrder(hid){
   }
 
   // Show order view first with skipRender=true so renderOrderView doesn't overwrite
+  orderViewFromHistory = true;
   showView('order', true);
   document.getElementById('ov-title').textContent=vendor+' — Order List';
   document.getElementById('ov-meta').textContent=dateStr+(tl?' · Team Lead: '+tl:'');
