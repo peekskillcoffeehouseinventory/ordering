@@ -782,7 +782,7 @@ async function loadAllData(){
       printOrder:parseInt(r.printOrder)||999,
       conversionFactor:parseFloat(r.conversionFactor)||1,
       sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
-      inventoryItem:r.inventoryItem!=='false'&&r.inventoryItem!==false,
+      inventoryItem:String(r.inventoryItem).toLowerCase()!=='false',
       orderName:r.orderName||'',
       orderPhoto:r.orderPhoto||null,
       photo:r.photo||null, counts:{}
@@ -1862,7 +1862,7 @@ async function reloadAll(){
       printOrder:parseInt(r.printOrder)||999,
       conversionFactor:parseFloat(r.conversionFactor)||1,
       sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
-      inventoryItem:r.inventoryItem!=='false'&&r.inventoryItem!==false, // default true
+      inventoryItem:String(r.inventoryItem).toLowerCase()!=='false', // handles TRUE/FALSE/true/false
       orderName:r.orderName||'',orderPhoto:r.orderPhoto||null,
       photo:r.photo||null,counts:{}
     })).filter(r=>r.name);
@@ -1902,7 +1902,7 @@ async function reloadItems(){
       printOrder:parseInt(r.printOrder)||999,
       conversionFactor:parseFloat(r.conversionFactor)||1,
       sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
-      inventoryItem:r.inventoryItem!=='false'&&r.inventoryItem!==false,
+      inventoryItem:String(r.inventoryItem).toLowerCase()!=='false',
       orderName:r.orderName||'',
       orderPhoto:r.orderPhoto||null,
       photo:r.photo||null,counts:{}
