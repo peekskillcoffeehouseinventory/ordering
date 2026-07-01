@@ -2120,28 +2120,33 @@ function renderLocChips(mode){
 // END OF MONTH INVENTORY MODE
 let invCounts = {};
 let invSavedColors = {}; // {itemId_loc: color} from saved inventory counts
+let invCountsMonth = ''; // track which month invCounts belongs to
 
 async function openInventoryMode(){
   showView('inventory');
   stopCountSync(); // Stop any running vendor count sync
   await reloadAll();
-  // Always start fresh — clear any stale in-memory counts
-  invCounts = {};
-  invSavedColors = {};
-  // Then restore saved inventory counts from this month's history entry
   const now = new Date();
   const thisMonth = localDateStr(now).slice(0,7);
+  // Only clear invCounts if it's a new month — preserve in-progress counts
+  if(invCountsMonth !== thisMonth){
+    invCounts = {};
+    invSavedColors = {};
+    invCountsMonth = thisMonth;
+  }
+  // Restore saved inventory counts from this month's history entry
+  // Only fill in items not already in invCounts (preserve unsaved in-progress work)
   const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
   if(invEntry&&invEntry.counts){
     const myName = userProfile?userProfile.name:'';
     Object.entries(invEntry.counts).forEach(([k,data])=>{
       if(data&&data.value!==undefined){
-        invCounts[k] = data.value;
+        if(invCounts[k]===undefined) invCounts[k] = data.value;
         if(data.savedBy && data.savedBy !== myName && data.color){
           invSavedColors[k] = data.color;
         }
       } else if(data!==null&&data!==undefined&&typeof data !== 'object'){
-        invCounts[k] = data;
+        if(invCounts[k]===undefined) invCounts[k] = data;
       }
     });
   }
@@ -2286,15 +2291,8 @@ async function saveInventoryCounts(){
 }
 
 function printInventorySummary(){
-  const now = new Date();
-  const thisMonth = localDateStr(now).slice(0,7);
-  const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
-  if(invEntry){
-    viewHistEntry(invEntry.id);
-  } else {
-    // No saved entry yet — prompt to save first
-    showToast('Please save your counts first, then print.');
-  }
+  // Print directly from current invCounts — no need to save first
+  window.print();
 }
 
 async function clearInventoryCounts(){
