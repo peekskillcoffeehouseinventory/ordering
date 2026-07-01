@@ -338,6 +338,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
     </div>
+    <div class="fi"><label>Include in end-of-month inventory?</label>
+      <div class="toggle-wrap" style="margin-top:4px">
+        <button class="toggle-opt active" id="edit-tog-inv-yes" onclick="setEditInv(true)">Yes</button>
+        <button class="toggle-opt" id="edit-tog-inv-no" onclick="setEditInv(false)">No</button>
+      </div>
+    </div>
     <div class="form-2">
       <div class="fi"><label>Order name <span style="font-weight:400;color:#aaa">(if different)</span></label><input id="edit-ordername" placeholder="e.g. Lemons"></div>
       <div class="fi"><label>Order photo <span style="font-weight:400;color:#aaa">(if different)</span></label>
@@ -503,6 +509,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
               </div>
             </div>
           </div>
+          <div class="fi"><label>Include in end-of-month inventory?</label>
+            <div class="toggle-wrap" style="margin-top:4px">
+              <button class="toggle-opt active" id="add-tog-inv-yes" onclick="setAddInv(true)">Yes</button>
+              <button class="toggle-opt" id="add-tog-inv-no" onclick="setAddInv(false)">No</button>
+            </div>
+          </div>
           <div class="form-2">
             <div class="fi"><label>Order name <span style="font-weight:400;color:#aaa">(if different from count name)</span></label><input id="ai-ordername" placeholder="e.g. Lemons"></div>
             <div class="fi"><label>Order photo <span style="font-weight:400;color:#aaa">(if different)</span></label>
@@ -617,7 +629,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbzqhqAceXdfYZzI8f3nGFE7ZNZ9P8NahycEEbaEsBHI7OMBwC36AhN9P91zzQHPzdSCQg/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbze9e4dpvOt1MgUaYCRZbkMvtQZwAnV3tfmAbZ3W-gLlxJEOSv0GE0QCBZzJCQI_8FHZQ/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -660,6 +672,7 @@ function csvSplit(line){
 const WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 let vendors=[], locations=[], items=[], history=[];
 let addSectionBreak=false, editSectionBreak=false;
+let addIncludeInv=true, editIncludeInv=true;
 let sessionCounts={}; // tracks only counts entered THIS session {vendorName: {itemId: {loc: val}}}
 const photoCache={}; // stores base64 photos by item id, survives reloadItems()
 let role='teamlead', activeDay=WEEKDAYS[(new Date().getDay()+6)%7], activeVendor=null, prevView='dash';
@@ -769,6 +782,7 @@ async function loadAllData(){
       printOrder:parseInt(r.printOrder)||999,
       conversionFactor:parseFloat(r.conversionFactor)||1,
       sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
+      inventoryItem:r.inventoryItem!=='false'&&r.inventoryItem!==false,
       orderName:r.orderName||'',
       orderPhoto:r.orderPhoto||null,
       photo:r.photo||null, counts:{}
@@ -1747,6 +1761,8 @@ function openEditModal(id){
   // section break
   editSectionBreak=item.sectionBreak||false;
   setEditBreak(editSectionBreak);
+  editIncludeInv=item.inventoryItem!==false; // default true
+  setEditInv(editIncludeInv);
   // order name
   document.getElementById('edit-ordername').value=item.orderName||'';
   // count photo
@@ -1767,6 +1783,16 @@ function setEditToggle(method){
   document.getElementById('edit-tog-fixed').className='toggle-opt'+(method==='fixed'?' active':'');
   document.getElementById('edit-tog-par').className='toggle-opt'+(method==='par'?' active':'');
   document.getElementById('edit-fixed-fields').style.display=method==='fixed'?'block':'none';
+}
+function setAddInv(val){
+  addIncludeInv=val;
+  document.getElementById('add-tog-inv-yes').className='toggle-opt'+(val?' active':'');
+  document.getElementById('add-tog-inv-no').className='toggle-opt'+(!val?' active':'');
+}
+function setEditInv(val){
+  editIncludeInv=val;
+  document.getElementById('edit-tog-inv-yes').className='toggle-opt'+(val?' active':'');
+  document.getElementById('edit-tog-inv-no').className='toggle-opt'+(!val?' active':'');
 }
 function setAddBreak(val){
   addSectionBreak=val;
@@ -1799,6 +1825,7 @@ async function saveEditItem(){
   item.printOrder=parseInt(document.getElementById('edit-printorder').value)||999;
   item.conversionFactor=parseFloat(document.getElementById('edit-conversion').value)||1;
   item.sectionBreak=editSectionBreak;
+  item.inventoryItem=editIncludeInv;
   item.orderName=document.getElementById('edit-ordername').value.trim();
   const photoSrc=document.getElementById('edit-photo-prev').dataset.src;
   if(photoSrc){ item.photo=photoSrc; photoCache[item.id]=photoSrc; }
@@ -1835,6 +1862,7 @@ async function reloadAll(){
       printOrder:parseInt(r.printOrder)||999,
       conversionFactor:parseFloat(r.conversionFactor)||1,
       sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
+      inventoryItem:r.inventoryItem!=='false'&&r.inventoryItem!==false, // default true
       orderName:r.orderName||'',orderPhoto:r.orderPhoto||null,
       photo:r.photo||null,counts:{}
     })).filter(r=>r.name);
@@ -1874,6 +1902,7 @@ async function reloadItems(){
       printOrder:parseInt(r.printOrder)||999,
       conversionFactor:parseFloat(r.conversionFactor)||1,
       sectionBreak:r.sectionBreak==='true'||r.sectionBreak===true||false,
+      inventoryItem:r.inventoryItem!=='false'&&r.inventoryItem!==false,
       orderName:r.orderName||'',
       orderPhoto:r.orderPhoto||null,
       photo:r.photo||null,counts:{}
@@ -1905,12 +1934,13 @@ async function addItem(){
   const itemId=Date.now();
   if(photo) photoCache[itemId]=photo;
   if(orderphoto) photoCache['order_'+itemId]=orderphoto;
-  const item={id:itemId,name,vendor,locations:[...addLocSelections],countUom:cuom,orderUom:ouom,par,orderQty:ordqty,orderMethod:addOrderMethod,printOrder:printorder,conversionFactor:conversion,sectionBreak:addSectionBreak,orderName:ordername,orderPhoto:orderphoto,photo,counts:{}};
+  const item={id:itemId,name,vendor,locations:[...addLocSelections],countUom:cuom,orderUom:ouom,par,orderQty:ordqty,orderMethod:addOrderMethod,printOrder:printorder,conversionFactor:conversion,sectionBreak:addSectionBreak,inventoryItem:addIncludeInv,orderName:ordername,orderPhoto:orderphoto,photo,counts:{}};
   await sheetWrite('addItem',{item});
   showToast('✅ Item added!');
   ['ai-name','ai-cuom','ai-ouom','ai-par','ai-ordqty','ai-printorder','ai-conversion','ai-ordername'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   addLocSelections=[];renderLocChips('add');
   addSectionBreak=false;setAddBreak(false);
+  addIncludeInv=true;setAddInv(true);
   document.getElementById('add-photo-prev').innerHTML='🖼️';delete document.getElementById('add-photo-prev').dataset.src;
   document.getElementById('add-orderphoto-prev').innerHTML='🖼️';delete document.getElementById('add-orderphoto-prev').dataset.src;
   // Reload from sheet so local state matches exactly what was saved
@@ -2093,8 +2123,12 @@ let invSavedColors = {}; // {itemId_loc: color} from saved inventory counts
 
 async function openInventoryMode(){
   showView('inventory');
+  stopCountSync(); // Stop any running vendor count sync
   await reloadAll();
-  // Restore saved inventory counts from history
+  // Always start fresh — clear any stale in-memory counts
+  invCounts = {};
+  invSavedColors = {};
+  // Then restore saved inventory counts from this month's history entry
   const now = new Date();
   const thisMonth = localDateStr(now).slice(0,7);
   const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
@@ -2103,8 +2137,6 @@ async function openInventoryMode(){
     Object.entries(invEntry.counts).forEach(([k,data])=>{
       if(data&&data.value!==undefined){
         invCounts[k] = data.value;
-        // Show color of whoever last saved this item
-        // If it was me, don't set saved color (active input shows my color)
         if(data.savedBy && data.savedBy !== myName && data.color){
           invSavedColors[k] = data.color;
         }
@@ -2133,7 +2165,7 @@ function renderInventoryMode(){
   const locBlocks=[];
   allLocs.forEach(loc=>{
     const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
-    const locItems = items.filter(i=>i.locations.includes(loc)).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+    const locItems = items.filter(i=>i.locations.includes(loc)&&i.inventoryItem!==false).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
     if(!locItems.length) return;
 
     // Screen block
@@ -2265,11 +2297,25 @@ function printInventorySummary(){
   }
 }
 
-function clearInventoryCounts(){
-  if(!confirm('Clear all inventory counts?')) return;
+async function clearInventoryCounts(){
+  if(!confirm('⚠️ Reset ALL inventory counts?\n\nThis will clear counts for EVERYONE on all devices and cannot be undone.')) return;
   invCounts = {};
   invSavedColors = {};
+  sessionCounts['__INVENTORY__'] = {};
+  // Write blank entry to Sheet so all devices see the reset
+  const now = new Date();
+  const thisMonth = localDateStr(now).slice(0,7);
+  const existingIdx = history.findIndex(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  const entry = {
+    id:'inv'+Date.now(), date:now.toISOString(),
+    vendor:'INVENTORY', teamLead:(userProfile?userProfile.name:'Reset'), day:'End of Month',
+    counts:{}
+  };
+  if(existingIdx>=0) history.splice(existingIdx,1);
+  history.unshift(entry);
+  await sheetWrite('saveCount',{entry});
   renderInventoryMode();
+  showToast('🔄 Inventory counts reset');
 }
 
 // USER PROFILE
