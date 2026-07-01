@@ -629,7 +629,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbze9e4dpvOt1MgUaYCRZbkMvtQZwAnV3tfmAbZ3W-gLlxJEOSv0GE0QCBZzJCQI_8FHZQ/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbxJcdFKfpfm5cKHNLGKNhxF0Ksaq6cihNNSmwchaZJW_thDL27jODed4BHuR_aH7gPI8w/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -1836,8 +1836,8 @@ async function saveEditItem(){
   closeEditModal();
   await sheetWrite('updateItem',{item});
   showToast('✅ Item updated!');
-  await reloadItems();
   renderItemTable();
+  renderCountView && activeVendor && renderCountView();
 }
 
 async function reloadAll(){
