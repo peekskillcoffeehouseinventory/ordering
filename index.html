@@ -2159,7 +2159,8 @@ async function openInventoryMode(){
   }
 
   // 3. Load from Sheet — only fill items not already in invCounts
-  const invEntry = history.find(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  const invEntries = history.filter(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  const invEntry = invEntries.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   if(invEntry&&invEntry.counts){
     const myName = userProfile?userProfile.name:'';
     Object.entries(invEntry.counts).forEach(([k,data])=>{
@@ -2311,7 +2312,8 @@ async function saveInventoryCounts(){
 
   // Check for existing inventory entry this month
   const thisMonth = localDateStr(now).slice(0,7);
-  const existingIdx = history.findIndex(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  const invEntries2 = history.filter(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const existingIdx = invEntries2.length ? history.indexOf(invEntries2[0]) : -1;
   let entry;
   if(existingIdx>=0){
     entry = history[existingIdx];
@@ -2355,7 +2357,8 @@ async function clearInventoryCounts(){
   // Write blank entry to Sheet so all devices see the reset
   const now = new Date();
   const thisMonth = localDateStr(now).slice(0,7);
-  const existingIdx = history.findIndex(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth);
+  const invEntries2 = history.filter(h=>h.vendor==='INVENTORY'&&h.date.slice(0,7)===thisMonth).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const existingIdx = invEntries2.length ? history.indexOf(invEntries2[0]) : -1;
   const entry = {
     id:'inv'+Date.now(), date:now.toISOString(),
     vendor:'INVENTORY', teamLead:(userProfile?userProfile.name:'Reset'), day:'End of Month',
