@@ -70,6 +70,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .v-dot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%}
 .v-dot.pending{background:#cbd5e1}.v-dot.partial{background:#f59e0b}.v-dot.done{background:#22c55e}
 .no-counts{text-align:center;padding:40px 16px;background:#FFFDF9;border-radius:12px;border:1px solid #E2D9CC;color:#888}
+.shift-section{margin-bottom:6px}
+.shift-section-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#aaa;padding:10px 0 6px;display:flex;align-items:center;gap:8px}
+.shift-section-hdr::after{content:'';flex:1;height:1px;background:#E2D9CC}
+.shift-empty{font-size:12px;color:#C8BFB0;padding:4px 0 10px;font-style:italic}
 .name-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #e8e8e3;margin-bottom:14px}
 .name-bar label{font-size:13px;color:#888;white-space:nowrap;font-weight:500}
 .name-bar input{flex:1;border:none;background:transparent;font-size:13px;color:#1a1a1a;outline:none;font-family:inherit}
@@ -273,6 +277,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="fi"><label>Website</label><input id="ev-website" placeholder="e.g. vendor.com"></div>
     <div class="fi"><label>Ordering instructions</label><textarea id="ev-instructions" style="width:100%;padding:8px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;min-height:60px"></textarea></div>
+    <div class="fi"><label>Responsible shift</label>
+      <div class="toggle-wrap" style="margin-top:4px">
+        <button class="toggle-opt" id="ev-role-open" onclick="setEvRole('opening')">Opening Lead</button>
+        <button class="toggle-opt" id="ev-role-close" onclick="setEvRole('closing')">Closing Lead</button>
+        <button class="toggle-opt active" id="ev-role-mgr" onclick="setEvRole('manager')">Café Manager</button>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn btn-primary" onclick="saveEditVendor()" style="flex:1">Save</button>
       <button class="btn" onclick="closeEditVendorModal()">Cancel</button>
@@ -560,6 +571,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           </div>
           <div class="fi"><label>Website <span style="font-weight:400;color:#aaa">(optional)</span></label><input id="av-website" placeholder="e.g. vendor.com"></div>
           <div class="fi"><label>Ordering instructions <span style="font-weight:400;color:#aaa">(optional)</span></label><textarea id="av-instructions" placeholder="e.g. Order by Tuesday 5pm via website. Min order $200." style="width:100%;padding:8px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;min-height:60px"></textarea></div>
+          <div class="fi"><label>Responsible shift</label>
+            <div class="toggle-wrap" style="margin-top:4px">
+              <button class="toggle-opt" id="av-role-open" onclick="setAvRole('opening')">Opening Lead</button>
+              <button class="toggle-opt" id="av-role-close" onclick="setAvRole('closing')">Closing Lead</button>
+              <button class="toggle-opt active" id="av-role-mgr" onclick="setAvRole('manager')">Café Manager</button>
+            </div>
+          </div>
           <button class="btn btn-primary" style="margin-top:10px" onclick="addVendor()">+ Add vendor</button>
         </div>
         <div class="mgr-card">
@@ -672,6 +690,7 @@ function csvSplit(line){
 const WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 let vendors=[], locations=[], items=[], history=[];
 let addSectionBreak=false, editSectionBreak=false;
+let addShiftRole='manager', editShiftRole='manager', evShiftRole='manager';
 let addIncludeInv=true, editIncludeInv=true;
 let sessionCounts={}; // tracks only counts entered THIS session {vendorName: {itemId: {loc: val}}}
 const photoCache={}; // stores base64 photos by item id, survives reloadItems()
@@ -767,7 +786,7 @@ async function loadAllData(){
     clearTimeout(skipTimer);
     if(loadAborted) return;
 
-    vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||''}));
+    vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager'}));
     events = (eRows||[]).map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
     locations = lRows.map(r=>r.name).filter(Boolean);
     const rawItems=iRows.map(r=>({
@@ -893,35 +912,53 @@ function switchDay(day){activeDay=day;renderDayNav();showView('dash');renderDash
 function renderDash(day){
   const vlist=scheduleFor(day);const isToday=day===today();
 
-  // Get events for this day
   const todayEvts=getDayEvents(day);
   const openEvts=todayEvts.filter(e=>e.audience==='both'||e.audience==='opening');
   const closeEvts=todayEvts.filter(e=>e.audience==='both'||e.audience==='closing');
 
   const buildNoteCard=(label,evts)=>{
-    const items=evts.length
+    const noteItems=evts.length
       ?evts.map(e=>'<div class="note-item"><div class="note-item-name">'+e.name+'</div>'+(e.notes?'<div class="note-item-detail">'+e.notes+'</div>':'')+'</div>').join('')
       :'<div class="note-empty">No notes for today</div>';
-    return '<div class="note-card"><div class="note-card-hdr">'+label+'</div>'+items+'</div>';
+    return '<div class="note-card"><div class="note-card-hdr">'+label+'</div>'+noteItems+'</div>';
   };
 
-  let html=buildNoteCard('🌅 Opening Lead Notes',openEvts);
+  const buildVendorCard=(v)=>{
+    const vi=vendorItems(v.name);const counted=vi.filter(i=>totalCount(i)!==null).length;
+    const status=counted===0?'pending':counted<vi.length?'partial':'done';
+    return '<div class="vendor-card" data-vname="'+v.name.replace(/"/g,'&quot;')+'" onclick="openVendorFromCard(this)"><div class="v-dot '+status+'"></div><div class="v-icon '+status+'">'+v.emoji+'</div><h3>'+v.name+'</h3><p>'+(vi.length?counted+'/'+vi.length+' counted':'No items yet')+'</p></div>';
+  };
+
+  const buildShiftSection=(label,vendors)=>{
+    let s='<div class="shift-section"><div class="shift-section-hdr">'+label+'</div>';
+    if(!vendors.length){
+      s+='<div class="shift-empty">No counts scheduled for this shift</div>';
+    } else {
+      s+='<div class="vendor-grid">'+vendors.map(buildVendorCard).join('')+'</div>';
+    }
+    return s+'</div>';
+  };
+
+  // Day header
+  let html='<div class="dash-hdr"><h2>'+(isToday?'Today — ':'\'')+day+'</h2>'+(vlist.length?'<p>'+vlist.length+' vendor'+(vlist.length>1?'s':'')+' to count</p>':'')+'</div>';
+
+  // Note cards
+  html+=buildNoteCard('🌅 Opening Lead Notes',openEvts);
   html+=buildNoteCard('🌆 Closing Lead Notes',closeEvts);
 
   if(!vlist.length){
     html+='<div class="no-counts"><div style="font-size:40px;margin-bottom:10px">☕</div><strong>No counts scheduled</strong><br><span style="font-size:13px;color:#aaa">No vendor orders for '+day+'.</span></div>';
   } else {
-    html+='<div class="dash-hdr"><h2>'+(isToday?'Today — ':'')+day+'</h2><p>'+vlist.length+' vendor'+(vlist.length>1?'s':'')+' to count</p></div><div class="vendor-grid">';
-    vlist.forEach(v=>{
-      const vi=vendorItems(v.name);const counted=vi.filter(i=>totalCount(i)!==null).length;
-      const status=counted===0?'pending':counted<vi.length?'partial':'done';
-      html+='<div class="vendor-card" data-vname="'+v.name.replace(/"/g,'&quot;')+'" onclick="openVendorFromCard(this)"><div class="v-dot '+status+'"></div><div class="v-icon '+status+'">'+v.emoji+'</div><h3>'+v.name+'</h3><p>'+(vi.length?counted+'/'+vi.length+' counted':'No items yet')+'</p></div>';
-    });
-    html+='</div>';
+    const openingVendors=vlist.filter(v=>v.shiftRole==='opening');
+    const closingVendors=vlist.filter(v=>v.shiftRole==='closing');
+    const managerVendors=vlist.filter(v=>!v.shiftRole||v.shiftRole==='manager');
+    html+=buildShiftSection('🌅 Opening Lead',openingVendors);
+    html+=buildShiftSection('🌆 Closing Lead',closingVendors);
+    html+=buildShiftSection('👤 Café Manager',managerVendors);
   }
+
   document.getElementById('view-dash').innerHTML=html;
 }
-
 
 // ─── DATE HELPERS (always use local time, never UTC) ─────────────────────
 function localDateStr(date){
@@ -1851,7 +1888,7 @@ async function reloadAll(){
       5000
     );
     events = eRows.map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
-    vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||''}));
+    vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager'}));
     locations=lRows.map(r=>r.name).filter(Boolean);
     const rawItems=iRows.map(r=>({
       id:parseInt(r.id)||nextId++,
@@ -1954,10 +1991,11 @@ async function deleteItem(id){
 }
 
 function renderVendorTable(){
+  const shiftLabel=r=>(r.shiftRole==='opening'?'🌅 Opening':r.shiftRole==='closing'?'🌆 Closing':'👤 Manager');
   document.getElementById('vtbl-body').innerHTML=vendors.map(v=>`
     <div class="vtbl-row"><span style="font-size:20px">${v.emoji}</span><span style="font-weight:500">${v.name}</span>
       <span style="font-size:12px;color:#aaa">${v.days.join(', ')}</span>
-      <span style="font-size:12px;color:#aaa">${vendorItems(v.name).length}</span>
+      <span style="font-size:11px;color:#888">${shiftLabel(v)}</span>
       <button class="edit-btn" onclick="openEditVendorModal('${v.id}')">Edit</button>
       <button class="del-btn" onclick="deleteVendor('${v.id}')">✕</button></div>`).join('');
 }
@@ -1965,6 +2003,18 @@ function renderLocList(){
   document.getElementById('loc-list').innerHTML=locations.map((l,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0eb;font-size:13px">
       <span>📍 ${l}</span><button class="del-btn" onclick="deleteLocation(${i})">✕</button></div>`).join('');
+}
+function setAvRole(val){
+  addShiftRole=val;
+  document.getElementById('av-role-open').className='toggle-opt'+(val==='opening'?' active':'');
+  document.getElementById('av-role-close').className='toggle-opt'+(val==='closing'?' active':'');
+  document.getElementById('av-role-mgr').className='toggle-opt'+(val==='manager'?' active':'');
+}
+function setEvRole(val){
+  evShiftRole=val;
+  document.getElementById('ev-role-open').className='toggle-opt'+(val==='opening'?' active':'');
+  document.getElementById('ev-role-close').className='toggle-opt'+(val==='closing'?' active':'');
+  document.getElementById('ev-role-mgr').className='toggle-opt'+(val==='manager'?' active':'');
 }
 function renderAvDays(){
   const days=[...WEEKDAYS,'1st of month'];
@@ -1983,14 +2033,15 @@ async function addVendor(){
     phone:document.getElementById('av-phone').value.trim(),
     email:document.getElementById('av-email').value.trim(),
     website:document.getElementById('av-website').value.trim(),
-    instructions:document.getElementById('av-instructions').value.trim()
+    instructions:document.getElementById('av-instructions').value.trim(),
+    shiftRole:addShiftRole
   };
   vendors.push(v);
   await sheetWrite('addVendor',{vendor:v});
   ['av-name','av-emoji','av-phone','av-email','av-website','av-instructions'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  avDaySelections=[];renderAvDays();renderVendorTable();renderDash(activeDay);showToast('✅ Vendor added!');
+  avDaySelections=[];renderAvDays();addShiftRole='manager';setAvRole('manager');renderVendorTable();renderDash(activeDay);showToast('✅ Vendor added!');
 }
 let editVendorId=null;
 let evDaySelections=[];
@@ -2005,7 +2056,9 @@ function openEditVendorModal(vid){
   document.getElementById('ev-website').value=v.website||'';
   document.getElementById('ev-instructions').value=v.instructions||'';
   evDaySelections=[...(v.days||[])];
+  evShiftRole=v.shiftRole||'manager';
   renderEvDays();
+  setEvRole(evShiftRole);
   document.getElementById('edit-vendor-modal').style.display='flex';
 }
 
@@ -2037,6 +2090,7 @@ async function saveEditVendor(){
   v.email=document.getElementById('ev-email').value.trim();
   v.website=document.getElementById('ev-website').value.trim();
   v.instructions=document.getElementById('ev-instructions').value.trim();
+  v.shiftRole=evShiftRole;
   await sheetWrite('updateVendor',{vendor:v});
   closeEditVendorModal();
   renderVendorTable();renderDash(activeDay);
