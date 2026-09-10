@@ -647,7 +647,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ─── SHEETS CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1AOYR_kCcY0U_bXP9xmbiWmk2JugxtAtks7x-XvqPAIc';
 const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
-let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbyqLdDqzPbMPOImQBMqA6RPLa6-ewAI6SG-d4DnjNsrVI9dNi-sLmSkp8_pXR027TXlYA/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbyaz3gvGzuSJtfNYpUeYfcKH48scpuKg8bfepTdDQ3x8784lScLedBUoubkxan2d2UynQ/exec';
 
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
@@ -690,6 +690,7 @@ function csvSplit(line){
 const WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 let vendors=[], locations=[], items=[], history=[];
 let addSectionBreak=false, editSectionBreak=false;
+let locationModes = {}; // {locName: 'both'|'ordering'|'inventory'}
 let addShiftRole='manager', editShiftRole='manager', evShiftRole='manager';
 let addIncludeInv=true, editIncludeInv=true;
 let sessionCounts={}; // tracks only counts entered THIS session {vendorName: {itemId: {loc: val}}}
@@ -789,6 +790,8 @@ async function loadAllData(){
     vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager'}));
     events = (eRows||[]).map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
     locations = lRows.map(r=>r.name).filter(Boolean);
+    locationModes = {};
+    lRows.forEach(r=>{ if(r.name && r.countMode) locationModes[r.name]=r.countMode; });
     const rawItems=iRows.map(r=>({
       id:parseInt(r.id)||nextId++,
       name:r.name||'', vendor:r.vendor||'',
@@ -1213,7 +1216,7 @@ async function openVendor(vname){
 function renderCountView(){
   const vi=vendorItems(activeVendor);
   if(!vi.length){document.getElementById('cv-body').innerHTML='<div class="empty-msg">No items for '+activeVendor+'. Add items in manager mode.</div>';return;}
-  const locs=[...new Set(vi.flatMap(i=>i.locations))].sort();
+  const locs=[...new Set(vi.flatMap(i=>i.locations))].sort().filter(loc=>locationModes[loc]!=='inventory');
   if(!locs.length){document.getElementById('cv-body').innerHTML='<div class="empty-msg">Items exist but no locations assigned. Edit in manager mode.</div>';return;}
   // Get saved count colors and values for today
   const now=new Date();
@@ -1697,7 +1700,7 @@ function viewHistEntry(hid){
   } else {
     // Regular vendor history
     const vi=vendorItems(entry.vendor);
-    const locs=[...new Set(vi.flatMap(i=>i.locations))].sort();
+    const locs=[...new Set(vi.flatMap(i=>i.locations))].sort().filter(loc=>locationModes[loc]!=='inventory');
     locs.forEach(loc=>{
       const li=vi.filter(i=>i.locations.includes(loc));
       html+=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;padding:9px 14px;background:#f5f5f0;border-radius:10px 10px 0 0;border:1px solid #e8e8e3;border-bottom:none">${loc}</div>
@@ -1890,6 +1893,8 @@ async function reloadAll(){
     events = eRows.map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
     vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager'}));
     locations=lRows.map(r=>r.name).filter(Boolean);
+    locationModes={};
+    lRows.forEach(r=>{ if(r.name&&r.countMode) locationModes[r.name]=r.countMode; });
     const rawItems=iRows.map(r=>({
       id:parseInt(r.id)||nextId++,
       name:r.name||'',vendor:r.vendor||'',
@@ -2000,9 +2005,25 @@ function renderVendorTable(){
       <button class="del-btn" onclick="deleteVendor('${v.id}')">✕</button></div>`).join('');
 }
 function renderLocList(){
-  document.getElementById('loc-list').innerHTML=locations.map((l,i)=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0eb;font-size:13px">
-      <span>📍 ${l}</span><button class="del-btn" onclick="deleteLocation(${i})">✕</button></div>`).join('');
+  document.getElementById('loc-list').innerHTML=locations.map((l,i)=>{
+    const mode=locationModes[l]||'both';
+    const modeLabel=mode==='inventory'?'📊 Inv. only':mode==='ordering'?'🛒 Count only':'✅ Both';
+    const modeColor=mode==='inventory'?'#9333EA':mode==='ordering'?'#0891B2':'#16A34A';
+    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0eb">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:500">📍 ${l}</span>
+        <button class="del-btn" onclick="deleteLocation(${i})">✕</button>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button data-loc="${l.replace(/"/g,'&quot;')}" data-mode="both" onclick="setLocationMode(this.dataset.loc,'both')"
+          style="flex:1;padding:4px 6px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid ${mode==='both'?'#16A34A':'#e0e0db'};background:${mode==='both'?'#f0fdf4':'#fff'};color:${mode==='both'?'#16A34A':'#888'};cursor:pointer">Both</button>
+        <button data-loc="${l.replace(/"/g,'&quot;')}" data-mode="ordering" onclick="setLocationMode(this.dataset.loc,'ordering')"
+          style="flex:1;padding:4px 6px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid ${mode==='ordering'?'#0891B2':'#e0e0db'};background:${mode==='ordering'?'#e0f2fe':'#fff'};color:${mode==='ordering'?'#0891B2':'#888'};cursor:pointer">Count only</button>
+        <button data-loc="${l.replace(/"/g,'&quot;')}" data-mode="inventory" onclick="setLocationMode(this.dataset.loc,'inventory')"
+          style="flex:1;padding:4px 6px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid ${mode==='inventory'?'#9333EA':'#e0e0db'};background:${mode==='inventory'?'#faf5ff':'#fff'};color:${mode==='inventory'?'#9333EA':'#888'};cursor:pointer">Inv. only</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function setAvRole(val){
   addShiftRole=val;
@@ -2104,7 +2125,17 @@ async function deleteVendor(vid){
 async function addLocation(){
   const name=document.getElementById('al-name').value.trim();
   if(!name){alert('Location name required.');return;}if(locations.includes(name)){alert('Already exists.');return;}
-  locations.push(name);await sheetWrite('addLocation',{name});document.getElementById('al-name').value='';renderLocList();
+  locations.push(name);
+  locationModes[name]='both';
+  await sheetWrite('addLocation',{name,countMode:'both'});
+  document.getElementById('al-name').value='';
+  renderLocList();
+}
+async function setLocationMode(name, mode){
+  locationModes[name]=mode;
+  await sheetWrite('updateLocation',{name,countMode:mode});
+  renderLocList();
+  showToast('Location updated');
 }
 async function deleteLocation(idx){
   if(!confirm('Remove this location?')) return;
