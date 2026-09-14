@@ -122,7 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab{flex:1;padding:7px;font-size:12px;font-weight:600;border:none;background:transparent;color:#888;cursor:pointer;border-radius:7px;transition:all .15s}
 .tab.active{background:#fff;color:#0891B2;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .itbl{border:1px solid #e8e8e3;border-radius:10px;overflow:hidden;margin-top:4px}
-.itbl-hdr{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#EDE8DF;border-bottom:1px solid #E2D9CC}
+.itbl-hdr{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#EDE8DF;border-bottom:1px solid #E2D9CC;overflow:hidden}
+.itbl-hdr span,.itbl-row span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .itbl-row{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0eb;font-size:13px;background:#fff}
 .itbl-row:last-child{border-bottom:none}
 .vtbl{border:1px solid #e8e8e3;border-radius:10px;overflow:hidden;margin-top:4px}
@@ -351,7 +352,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="toggle-wrap" style="margin-top:4px;flex-wrap:wrap;gap:4px">
         <button class="toggle-opt" id="eic-food" onclick="setEditCat('food')">🍽️ Food/Bev</button>
         <button class="toggle-opt" id="eic-packaging" onclick="setEditCat('packaging')">📦 Packaging</button>
-        <button class="toggle-opt" id="eic-operations" onclick="setEditCat('operations')">⚙️ Operations</button>
+        <button class="toggle-opt" id="eic-operations" onclick="setEditCat('operations')">⚙️ Ops</button>
         <button class="toggle-opt" id="eic-cleaning" onclick="setEditCat('cleaning')">🧹 Cleaning</button>
       </div>
     </div>
@@ -528,7 +529,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="toggle-wrap" style="margin-top:4px;flex-wrap:wrap;gap:4px">
               <button class="toggle-opt active" id="aic-food" onclick="setAddCat('food')">🍽️ Food/Bev</button>
               <button class="toggle-opt" id="aic-packaging" onclick="setAddCat('packaging')">📦 Packaging</button>
-              <button class="toggle-opt" id="aic-operations" onclick="setAddCat('operations')">⚙️ Operations</button>
+              <button class="toggle-opt" id="aic-operations" onclick="setAddCat('operations')">⚙️ Ops</button>
               <button class="toggle-opt" id="aic-cleaning" onclick="setAddCat('cleaning')">🧹 Cleaning</button>
             </div>
           </div>
@@ -564,7 +565,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <h3>📦 All items (<span id="item-count">0</span>)</h3>
           <input id="item-search" placeholder="Search items..." style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;margin-bottom:10px" oninput="renderItemTable()">
           <div class="itbl">
-            <div class="itbl-hdr"><span></span><span>Item</span><span>Vendor</span><span>Count/Order UoM</span><span>Method</span><span>Edit</span><span></span></div>
+            <div class="itbl-hdr"><span></span><span>Item</span><span>Vendor</span><span>UoM</span><span>Method</span><span>Edit</span><span></span></div>
             <div id="itbl-body"></div>
           </div>
         </div>
@@ -1956,13 +1957,17 @@ function setEditInv(val){
 }
 function setAddBreak(val){
   addSectionBreak=val;
-  document.getElementById('add-tog-break-no').className='toggle-opt'+(val?'':' active');
-  document.getElementById('add-tog-break-yes').className='toggle-opt'+(val?' active':'');
+  const no=document.getElementById('add-tog-break-no');
+  const yes=document.getElementById('add-tog-break-yes');
+  if(no) no.className='toggle-opt'+(val?'':' active');
+  if(yes) yes.className='toggle-opt'+(val?' active':'');
 }
 function setEditBreak(val){
   editSectionBreak=val;
-  document.getElementById('edit-tog-break-no').className='toggle-opt'+(val?'':' active');
-  document.getElementById('edit-tog-break-yes').className='toggle-opt'+(val?' active':'');
+  const no=document.getElementById('edit-tog-break-no');
+  const yes=document.getElementById('edit-tog-break-yes');
+  if(no) no.className='toggle-opt'+(val?'':' active');
+  if(yes) yes.className='toggle-opt'+(val?' active':'');
 }
 function setAddToggle(method){
   addOrderMethod=method;
