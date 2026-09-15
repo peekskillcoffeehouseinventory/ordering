@@ -814,7 +814,7 @@ async function loadAllData(){
     console.log('LOADALLDATA vRows[0]:', JSON.stringify(vRows[0]));
     console.log('LOADALLDATA vRows[0] keys:', Object.keys(vRows[0]||{}));
     vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager',
-      printByCategory:r.printByCategory==='true'||r.printByCategory===true||false}));
+      printByCategory:String(r.printByCategory).toLowerCase()==='true'}));
     events = (eRows||[]).map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
     locations = lRows.map(r=>r.name).filter(Boolean);
     locationModes = {};
@@ -2023,7 +2023,7 @@ async function reloadAll(){
     console.log('RAW VENDOR ROW 0:', JSON.stringify(vRows[0]));
     console.log('VENDOR KEYS:', Object.keys(vRows[0]||{}));
     vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager',
-      printByCategory:r.printByCategory==='true'||r.printByCategory===true||false}));
+      printByCategory:String(r.printByCategory).toLowerCase()==='true'}));
     locations=lRows.map(r=>r.name).filter(Boolean);
     locationModes={};
     lRows.forEach(r=>{ if(r.name&&r.countMode) locationModes[r.name]=r.countMode; });
