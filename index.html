@@ -671,7 +671,9 @@ let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.g
 async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
   const res=await fetch(url); if(!res.ok) throw new Error('Failed to read '+tabName);
-  return csvParse(await res.text());
+  const rawText=await res.text();
+  if(tabName==='Vendors') console.log('VENDORS RAW CSV:', rawText.slice(0,500));
+  return csvParse(rawText);
 }
 async function sheetWrite(action,data){
   if(!APPS_SCRIPT_URL){showToast('⚠️ Apps Script not connected');return false;}
