@@ -122,9 +122,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab{flex:1;padding:7px;font-size:12px;font-weight:600;border:none;background:transparent;color:#888;cursor:pointer;border-radius:7px;transition:all .15s}
 .tab.active{background:#fff;color:#0891B2;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .itbl{border:1px solid #e8e8e3;border-radius:10px;overflow:hidden;margin-top:4px}
-.itbl-hdr{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#EDE8DF;border-bottom:1px solid #E2D9CC;overflow:hidden}
+.itbl-hdr{display:grid;grid-template-columns:36px 1fr 52px 52px 32px;gap:8px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;border-bottom:1px solid #E2D9CC;overflow:hidden}
 .itbl-hdr span,.itbl-row span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.itbl-row{display:grid;grid-template-columns:32px 1fr 100px 80px 60px 60px 28px;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0eb;font-size:13px;background:#fff}
+.itbl-row{display:grid;grid-template-columns:36px 1fr 52px 52px 32px;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.06);font-size:13px}
 .itbl-row:last-child{border-bottom:none}
 .vtbl{border:1px solid #e8e8e3;border-radius:10px;overflow:hidden;margin-top:4px}
 .vtbl-hdr{display:grid;grid-template-columns:32px 1fr 120px 90px 44px 32px;gap:6px;padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;background:#EDE8DF;border-bottom:1px solid #E2D9CC}
@@ -167,7 +167,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge-par{background:#fef9c3;color:#854d0e}
 @media(max-width:500px){
   .col-hdr,.item-row{grid-template-columns:36px 1fr 66px 60px 56px}
-  .itbl-hdr,.itbl-row{grid-template-columns:28px 1fr 80px 60px 44px 28px 24px;font-size:11px}
+  .itbl-hdr,.itbl-row{grid-template-columns:28px 1fr 44px 44px 24px;font-size:11px}
   .print-two-col{grid-template-columns:1fr}
 }
 @media print{
@@ -565,7 +565,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <h3>📦 All items (<span id="item-count">0</span>)</h3>
           <input id="item-search" placeholder="Search items..." style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e0e0db;border-radius:8px;font-family:inherit;margin-bottom:10px" oninput="renderItemTable()">
           <div class="itbl">
-            <div class="itbl-hdr"><span></span><span>Item</span><span>Vendor</span><span>UoM</span><span>Method</span><span>Edit</span><span></span></div>
+            <div class="itbl-hdr" style="background:#EDE8DF"><span></span><span>Item</span><span>Method</span><span>Edit</span><span></span></div>
             <div id="itbl-body"></div>
           </div>
         </div>
@@ -1836,19 +1836,28 @@ function saveASUrl(){
 }
 
 function renderItemTable(){
+  const catStyle={
+    food:     {bg:'#E1F5EE',border:'rgba(31,110,86,0.2)',text:'#085041'},
+    packaging:{bg:'#E6F1FB',border:'rgba(24,95,165,0.2)',text:'#042C53'},
+    operations:{bg:'#EEEDFE',border:'rgba(83,74,183,0.2)',text:'#26215C'},
+    cleaning: {bg:'#FAEEDA',border:'rgba(186,117,23,0.2)',text:'#412402'},
+  };
   const q=(document.getElementById('item-search')?.value||'').toLowerCase();
-  const filtered=items.filter(i=>!q||i.name.toLowerCase().includes(q)||i.vendor.toLowerCase().includes(q));
+  const filtered=[...items]
+    .filter(i=>!q||i.name.toLowerCase().includes(q)||i.vendor.toLowerCase().includes(q))
+    .sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById('item-count').textContent=items.length;
-  document.getElementById('itbl-body').innerHTML=filtered.map(i=>`
-    <div class="itbl-row">
-      ${thumbHTML(i.photo,28,13)}
-      <span style="font-weight:500">${i.name}</span>
-      <span style="color:#aaa;font-size:11px">${i.vendor==='__INVENTORY__'?'📊 Inv. only':i.vendor}</span>
-      <span style="font-size:11px;color:#aaa">${i.countUom||'—'} / ${i.orderUom||'—'}</span>
-      <span>${i.vendor==='__INVENTORY__'?'<span class="badge" style="background:#f0e6ff;color:#6b21a8">inv only</span>':`<span class="badge ${i.orderMethod==='par'?'badge-par':'badge-fixed'}">${i.orderMethod==='par'?'→par':'fixed'}</span>`}</span>
-      <button class="edit-btn" onclick="openEditModal(${i.id})">Edit</button>
-      <button class="del-btn" onclick="deleteItem(${i.id})" title="Delete">✕</button>
-    </div>`).join('')||'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">No items found</div>';
+  document.getElementById('itbl-body').innerHTML=filtered.map(i=>{
+    const cat=i.category||'food';
+    const cs=catStyle[cat]||catStyle.food;
+    return `<div class="itbl-row" style="background:${cs.bg};border-bottom:1px solid ${cs.border}">
+      ${thumbHTML(i.photo,32,13)}
+      <span style="font-weight:500;color:${cs.text}">${i.name}</span>
+      <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.5);color:${cs.text};border:0.5px solid rgba(255,255,255,0.7)">${i.orderMethod==='par'?'→ par':'fixed'}</span>
+      <button class="edit-btn" onclick="openEditModal(${i.id})" style="border-color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.5);color:${cs.text}">Edit</button>
+      <button class="del-btn" onclick="deleteItem(${i.id})" title="Delete" style="color:${cs.text};opacity:0.6">✕</button>
+    </div>`;
+  }).join('')||'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">No items found</div>';
 }
 
 // Edit modal
