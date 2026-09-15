@@ -672,7 +672,6 @@ async function sheetRead(tabName){
   const url=`${BASE_URL}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tabName)}&cachebust=${Date.now()}`;
   const res=await fetch(url); if(!res.ok) throw new Error('Failed to read '+tabName);
   const rawText=await res.text();
-  if(tabName==='Vendors') console.log('VENDORS RAW CSV:', rawText.slice(0,500));
   return csvParse(rawText);
 }
 async function sheetWrite(action,data){
@@ -811,8 +810,6 @@ async function loadAllData(){
     clearTimeout(skipTimer);
     if(loadAborted) return;
 
-    console.log('LOADALLDATA vRows[0]:', JSON.stringify(vRows[0]));
-    console.log('LOADALLDATA vRows[0] keys:', Object.keys(vRows[0]||{}));
     vendors = vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager',
       printByCategory:String(r.printByCategory).toLowerCase()==='true'}));
     events = (eRows||[]).map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
@@ -2020,8 +2017,6 @@ async function reloadAll(){
       5000
     );
     events = eRows.map(r=>({id:r.id,name:r.name,date:r.date,audience:r.audience||'both',notes:r.notes||'',repeat:r.repeat||'none',repeatDays:r.repeatDays?r.repeatDays.split('|'):[],repeatDate:r.repeatDate||''})).filter(r=>r.name);
-    console.log('RAW VENDOR ROW 0:', JSON.stringify(vRows[0]));
-    console.log('VENDOR KEYS:', Object.keys(vRows[0]||{}));
     vendors=vRows.map(r=>({id:r.id,name:r.name,emoji:r.emoji||'📦',days:r.days?r.days.split('|'):[],phone:r.phone||'',email:r.email||'',website:r.website||'',instructions:r.instructions||'',shiftRole:r.shiftRole||'manager',
       printByCategory:String(r.printByCategory).toLowerCase()==='true'}));
     locations=lRows.map(r=>r.name).filter(Boolean);
