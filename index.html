@@ -182,14 +182,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   #view-inventory .view-header,#view-inventory .back-btn,
   #view-inventory .actions,.day-nav,.topbar,.pch-header,.no-print{display:none!important}
   #view-inventory #inv-print-hdr{display:block!important;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #1a1a1a}
-  .inv-print-cols{display:table;width:100%;border-collapse:collapse}
-  .inv-print-col{display:table-cell;width:50%;vertical-align:top;padding-right:10px}
-  .inv-print-col+.inv-print-col{padding-right:0;padding-left:10px;border-left:1px solid #e0e0e0}
-  .inv-print-loc{break-inside:avoid;margin-bottom:10px}
-  .inv-print-loc-hdr{font-size:10px;font-weight:700;padding:4px 6px;background:#f5f5f0;border:1px solid #e0e0e0;border-bottom:none}
-  .inv-print-row{display:grid;grid-template-columns:22px 1fr 44px;gap:4px;align-items:center;padding:3px 6px;border:1px solid #e0e0e0;border-top:none;font-size:9px}
-  .inv-print-row img{width:18px;height:18px;object-fit:cover;border-radius:3px}
-  .inv-print-input{border:1px solid #999;border-radius:2px;width:100%;height:16px;font-size:9px;text-align:center}
+  .inv-print-cols{column-count:2;column-gap:18px;column-rule:1px solid #e0e0e0;width:100%}
+  .inv-print-col{display:contents}
+  
+  .inv-print-loc{break-inside:auto;margin-bottom:6px}
+  .inv-print-loc-hdr{break-after:avoid;font-size:10px;font-weight:700;padding:4px 6px;background:#f5f5f0;border:1px solid #e0e0e0;border-bottom:none}
+  .inv-print-row{display:grid;grid-template-columns:18px 1fr 44px;gap:4px;align-items:center;padding:1px 5px;border:1px solid #e0e0e0;border-top:none;font-size:9px;break-inside:avoid;line-height:1.15}
+  .inv-print-row img{width:16px;height:16px;object-fit:cover;border-radius:3px}
+  .inv-print-input{border:1px solid #999;border-radius:2px;width:100%;height:14px;font-size:9px;text-align:center}
   .no-screen{display:block!important}
   #inv-body>.loc-group{display:none!important}
 }
@@ -351,15 +351,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="fi"><label>Category</label>
       <div class="toggle-wrap" style="margin-top:4px;flex-wrap:wrap;gap:4px">
         <button class="toggle-opt" id="eic-food" onclick="setEditCat('food')">🍽️ Food/Bev</button>
-        <button class="toggle-opt" id="eic-packaging" onclick="setEditCat('packaging')">📦 Packaging</button>
-        <button class="toggle-opt" id="eic-operations" onclick="setEditCat('operations')">⚙️ Ops</button>
+        <button class="toggle-opt" id="eic-packaging" onclick="setEditCat('packaging')">📦 Disposables</button>
+        <button class="toggle-opt" id="eic-operations" onclick="setEditCat('operations')">⚙️ Operational</button>
         <button class="toggle-opt" id="eic-cleaning" onclick="setEditCat('cleaning')">🧹 Cleaning</button>
-      </div>
-    </div>
-    <div class="fi"><label>Include in end-of-month inventory?</label>
-      <div class="toggle-wrap" style="margin-top:4px">
-        <button class="toggle-opt active" id="edit-tog-inv-yes" onclick="setEditInv(true)">Yes</button>
-        <button class="toggle-opt" id="edit-tog-inv-no" onclick="setEditInv(false)">No</button>
       </div>
     </div>
     <div class="form-2">
@@ -468,8 +462,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <input type="hidden" id="inv-staff-name">
     <div class="no-print" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="inv-cat-filter">
       <button id="inv-cat-food" onclick="toggleInvCategory('food')" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #0891B2;background:#0891B2;color:#fff;cursor:pointer">🍽️ Food/Bev</button>
-      <button id="inv-cat-packaging" onclick="toggleInvCategory('packaging')" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #0891B2;background:#0891B2;color:#fff;cursor:pointer">📦 Packaging</button>
-      <button id="inv-cat-operations" onclick="toggleInvCategory('operations')" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #0891B2;background:#0891B2;color:#fff;cursor:pointer">⚙️ Operations</button>
+      <button id="inv-cat-packaging" onclick="toggleInvCategory('packaging')" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #0891B2;background:#0891B2;color:#fff;cursor:pointer">📦 Disposables</button>
+      <button id="inv-cat-operations" onclick="toggleInvCategory('operations')" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #0891B2;background:#0891B2;color:#fff;cursor:pointer">⚙️ Operational</button>
       <button id="inv-cat-cleaning" onclick="toggleInvCategory('cleaning')" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #0891B2;background:#0891B2;color:#fff;cursor:pointer">🧹 Cleaning</button>
     </div>
     <div id="inv-body"></div>
@@ -528,15 +522,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <div class="fi"><label>Category</label>
             <div class="toggle-wrap" style="margin-top:4px;flex-wrap:wrap;gap:4px">
               <button class="toggle-opt active" id="aic-food" onclick="setAddCat('food')">🍽️ Food/Bev</button>
-              <button class="toggle-opt" id="aic-packaging" onclick="setAddCat('packaging')">📦 Packaging</button>
-              <button class="toggle-opt" id="aic-operations" onclick="setAddCat('operations')">⚙️ Ops</button>
+              <button class="toggle-opt" id="aic-packaging" onclick="setAddCat('packaging')">📦 Disposables</button>
+              <button class="toggle-opt" id="aic-operations" onclick="setAddCat('operations')">⚙️ Operational</button>
               <button class="toggle-opt" id="aic-cleaning" onclick="setAddCat('cleaning')">🧹 Cleaning</button>
-            </div>
-          </div>
-          <div class="fi"><label>Include in end-of-month inventory?</label>
-            <div class="toggle-wrap" style="margin-top:4px">
-              <button class="toggle-opt active" id="add-tog-inv-yes" onclick="setAddInv(true)">Yes</button>
-              <button class="toggle-opt" id="add-tog-inv-no" onclick="setAddInv(false)">No</button>
             </div>
           </div>
           <div class="form-2">
@@ -1416,7 +1404,7 @@ function renderOrderViewByCategory(vInfo){
   const now=new Date();
   const dateStr=now.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'});
   const tl=userProfile?userProfile.name:'';
-  const catLabels={food:'🍽️ Food/Beverage',packaging:'📦 Packaging & Disposables',operations:'⚙️ Operations & Smallwares',cleaning:'🧹 Cleaning & Chemical'};
+  const catLabels={food:'🍽️ Food/Bev',packaging:'📦 Disposables',operations:'⚙️ Operational',cleaning:'🧹 Cleaning'};
 
   const contactParts=[];
   if(vInfo.phone) contactParts.push('📞 '+vInfo.phone);
@@ -1652,8 +1640,8 @@ function viewHistOrder(hid){
     let rows='';
     for(let i=0;i<maxRows;i++){
       const L=leftCol[i]; const R=rightCol[i];
-      const lqty=L?calcOrderQty(L):null;
-      const rqty=R?calcOrderQty(R):null;
+      const lqty=L?orderQtys[String(L.id)]:null;
+      const rqty=R?orderQtys[String(R.id)]:null;
       const lname=L?(L.orderName||L.name):'';
       const rname=R?(R.orderName||R.name):'';
       const lphoto=L?(L.orderPhoto||L.photo||photoCache['order_'+L.id]||photoCache[L.id]||null):null;
@@ -1909,10 +1897,10 @@ function setEditToggle(method){
 }
 // Item category
 const ITEM_CATEGORIES = [
-  {id:'food', label:'🍽️ Food/Beverage'},
-  {id:'packaging', label:'📦 Packaging & Disposables'},
-  {id:'operations', label:'⚙️ Operations & Smallwares'},
-  {id:'cleaning', label:'🧹 Cleaning & Chemical'}
+  {id:'food', label:'🍽️ Food/Bev'},
+  {id:'packaging', label:'📦 Disposables'},
+  {id:'operations', label:'⚙️ Operational'},
+  {id:'cleaning', label:'🧹 Cleaning'}
 ];
 function setAddCat(val){
   addItemCategory=val;
@@ -1957,12 +1945,12 @@ function renderInvCategoryFilter(){
 }
 function setAddInv(val){
   addIncludeInv=val;
-  document.getElementById('add-tog-inv-yes').className='toggle-opt'+(val?' active':'');
+  const _a=document.getElementById('add-tog-inv-yes');if(!_a)return;document.getElementById('add-tog-inv-yes').className='toggle-opt'+(val?' active':'');
   document.getElementById('add-tog-inv-no').className='toggle-opt'+(!val?' active':'');
 }
 function setEditInv(val){
   editIncludeInv=val;
-  document.getElementById('edit-tog-inv-yes').className='toggle-opt'+(val?' active':'');
+  const _e=document.getElementById('edit-tog-inv-yes');if(!_e)return;document.getElementById('edit-tog-inv-yes').className='toggle-opt'+(val?' active':'');
   document.getElementById('edit-tog-inv-no').className='toggle-opt'+(!val?' active':'');
 }
 function setAddBreak(val){
@@ -2422,7 +2410,7 @@ function renderInventoryMode(){
   const locBlocks=[];
   allLocs.forEach(loc=>{
     const escapedLoc=loc.replace(/[^a-zA-Z0-9]/g,'_');
-    const locItems = items.filter(i=>i.locations.includes(loc)&&i.inventoryItem!==false&&invCategoryFilter.has(i.category||'food')).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
+    const locItems = items.filter(i=>i.locations.includes(loc)&&invCategoryFilter.has(i.category||'food')).sort((a,b)=>(a.printOrder||999)-(b.printOrder||999));
     if(!locItems.length) return;
 
     // Screen block
@@ -2453,7 +2441,7 @@ function renderInventoryMode(){
 
       // Print row
       const photoHtml = item.photo?'<img src="'+item.photo+'" style="width:18px;height:18px;object-fit:cover;border-radius:3px">':'<div style="width:18px;height:18px"></div>';
-      printBlock+='<div class="inv-print-row">'+photoHtml+'<span>'+item.name+'<br><span style="color:#aaa;font-size:8px">'+(item.countUom||item.orderUom||'')+'</span></span><input class="inv-print-input" value="'+(cv!==undefined&&cv!==null?cv:'')+'"></div>';
+      printBlock+='<div class="inv-print-row">'+photoHtml+'<span>'+item.name+' <span style="color:#aaa;font-size:8px">'+(item.countUom||item.orderUom||'')+'</span></span><input class="inv-print-input" value="'+(cv!==undefined&&cv!==null?cv:'')+'"></div>';
     });
 
     screenBlock+='</div>';
@@ -2468,7 +2456,7 @@ function renderInventoryMode(){
   const half = Math.ceil(locBlocks.length/2);
   const leftBlocks = locBlocks.slice(0,half).map(b=>b.print).join('');
   const rightBlocks = locBlocks.slice(half).map(b=>b.print).join('');
-  const printHtml = '<div class="inv-print-cols no-screen"><div class="inv-print-col">'+leftBlocks+'</div><div class="inv-print-col">'+rightBlocks+'</div></div>';
+  const printHtml = '<div class="inv-print-cols no-screen">'+locBlocks.map(b=>b.print).join('')+'</div>';
 
   document.getElementById('inv-body').innerHTML=screenHtml+printHtml;
 }
